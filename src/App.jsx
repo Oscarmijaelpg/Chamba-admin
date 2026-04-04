@@ -18,6 +18,9 @@ import {
   CreditCard
 } from 'lucide-react';
 
+// Auth
+import LoginView from './components/LoginView';
+
 // Vistas
 import UsersTable from './components/UsersTable';
 import ChambasTable from './components/ChambasTable';
@@ -50,6 +53,8 @@ const StatCard = ({ title, value, icon: Icon, color }) => (
 );
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [pendingTx, setPendingTx] = useState([]);
   const [stats, setStats] = useState({ users: 0, chambas: 0, revenue: 0, commission: 0, reports: 0 });
@@ -59,8 +64,21 @@ export default function App() {
   const [selectedRows, setSelectedRows] = useState([]);
 
   useEffect(() => {
-    fetchDashboardData();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+      setAuthLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user) fetchDashboardData();
+  }, [user]);
 
   const fetchDashboardData = async () => {
     try {
@@ -283,6 +301,18 @@ export default function App() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginView />;
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
       {/* Sidebar */}
@@ -318,7 +348,10 @@ export default function App() {
 
         <div className="p-4 border-t border-slate-100 space-y-3">
           <DarkModeToggle />
-          <button className="flex items-center gap-3 px-4 py-3 text-red-500 font-medium w-full hover:bg-red-50 rounded-xl transition-all">
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="flex items-center gap-3 px-4 py-3 text-red-500 font-medium w-full hover:bg-red-50 rounded-xl transition-all"
+          >
             <LogOut size={20} />
             Salir
           </button>
