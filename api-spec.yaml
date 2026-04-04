@@ -1,0 +1,235 @@
+openapi: 3.0.0
+info:
+  title: Chamba Admin API
+  description: |
+    API documentation for Chamba Admin Panel
+
+    Base URL: Supabase Instance URL
+    Authentication: JWT Bearer Token
+  version: 1.0.0
+  contact:
+    name: Chamba Support
+    url: https://github.com/Oscarmijaelpg/Chamba
+
+servers:
+  - url: https://{supabase-url}
+    variables:
+      supabase-url:
+        default: your-project.supabase.co
+        description: Your Supabase project URL
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Supabase Auth
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique user identifier
+        email:
+          type: string
+          format: email
+          description: User email address
+        user_metadata:
+          type: object
+          description: Custom user metadata
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        session:
+          type: object
+          properties:
+            access_token:
+              type: string
+              description: JWT access token
+            refresh_token:
+              type: string
+              description: Refresh token
+            expires_in:
+              type: integer
+              description: Token expiration in seconds
+            expires_at:
+              type: integer
+              description: Unix timestamp of expiration
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: securepassword123
+
+    ValidationError:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        status:
+          type: integer
+          description: HTTP status code
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/v1/signup:
+    post:
+      summary: Register a new user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+      responses:
+        '200':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User already exists
+
+  /auth/v1/token:
+    post:
+      summary: Login user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+
+  /auth/v1/user:
+    get:
+      summary: Get current user
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+
+  /auth/v1/logout:
+    post:
+      summary: Logout user
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+        '401':
+          description: Unauthorized
+
+tags:
+  - name: Authentication
+    description: |
+      Authentication endpoints for user login, signup, and session management.
+
+      All authenticated endpoints require a valid JWT Bearer token in the Authorization header:
+      ```
+      Authorization: Bearer <token>
+      ```
+  - name: Admin
+    description: Admin panel operations and management endpoints
+
+x-chamba:
+  validation:
+    email:
+      pattern: '^[^\s@]+@[^\s@]+\.[^\s@]+$'
+      description: Valid email format required
+    password:
+      minLength: 6
+      description: Password must be at least 6 characters
+
+  errorCodes:
+    INVALID_EMAIL: Email format is invalid
+    WEAK_PASSWORD: Password does not meet security requirements
+    USER_EXISTS: User with this email already exists
+    INVALID_CREDENTIALS: Invalid email or password
+    UNAUTHORIZED: No valid authentication token provided
+    NOT_FOUND: Resource not found
+    SERVER_ERROR: Internal server error
