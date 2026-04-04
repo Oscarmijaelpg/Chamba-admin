@@ -1,16 +1,27 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { validateLoginForm } from '../lib/validators';
 
 export default function LoginView() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+    setFieldErrors({});
+
+    // Validate form
+    const validation = validateLoginForm(email, password);
+    if (!validation.valid) {
+      setFieldErrors(validation.errors);
+      return;
+    }
+
+    setLoading(true);
 
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -43,9 +54,14 @@ export default function LoginView() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+              className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+                fieldErrors.email ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-primary-500'
+              }`}
               placeholder="admin@chamba.com"
             />
+            {fieldErrors.email && (
+              <p className="text-red-500 text-xs font-medium mt-1">{fieldErrors.email}</p>
+            )}
           </div>
 
           <div>
@@ -57,13 +73,20 @@ export default function LoginView() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+              className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+                fieldErrors.password ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-primary-500'
+              }`}
               placeholder="••••••••"
             />
+            {fieldErrors.password && (
+              <p className="text-red-500 text-xs font-medium mt-1">{fieldErrors.password}</p>
+            )}
           </div>
 
           {error && (
-            <p className="text-red-500 text-sm font-medium">{error}</p>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+              <p className="text-red-700 text-sm font-medium">{error}</p>
+            </div>
           )}
 
           <button
