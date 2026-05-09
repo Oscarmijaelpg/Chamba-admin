@@ -12,7 +12,6 @@ import {
   TrendingUp,
   CheckCircle2,
   XCircle,
-  Clock,
   AlertTriangle,
   Shield,
   CreditCard

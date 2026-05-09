@@ -1,7 +1,7 @@
 // src/components/JobsTable.jsx - TABLA DE TRABAJOS
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, Trash2, ExternalLink, MapPin, Briefcase, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Search, Trash2, CheckCircle, XCircle } from 'lucide-react';
 
 export default function JobsTable() {
   const [jobs, setJobs] = useState([]);

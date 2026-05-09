@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, Clock, User, Shield, AlertTriangle, CheckCircle, XCircle, RefreshCw, Filter } from 'lucide-react';
+import { Search, Clock, User, Shield, AlertTriangle, RefreshCw, Filter } from 'lucide-react';
 
 const ACTION_LABELS = {
   'user.register': 'Nuevo usuario registrado',
