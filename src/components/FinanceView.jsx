@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { useState } from 'react';
+import { useFinance } from '../hooks/useFinance';
 import {
   ArrowUpRight,
   ArrowDownLeft,
@@ -10,56 +10,8 @@ import {
 } from 'lucide-react';
 
 export default function FinanceView() {
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-
-  useEffect(() => {
-    fetchTransactions();
-  }, [filter]);
-
-  const fetchTransactions = async () => {
-    setLoading(true);
-    let query = supabase
-      .from('wallet_transactions')
-      .select('*, users(full_name, email)')
-      .order('created_at', { ascending: false });
-    
-    if (filter !== 'all') query = query.eq('status', filter);
-    
-    const { data, error } = await query;
-    if (!error) setTransactions(data || []);
-    setLoading(false);
-  };
-
-  const handleAction = async (id, status) => {
-    const { error } = await supabase
-      .from('wallet_transactions')
-      .update({ status })
-      .eq('id', id);
-    if (!error) fetchTransactions();
-  };
-
-  const handleWithdrawalApproval = async (transactionId, approve) => {
-    if (!approve) {
-      // Reject
-      await supabase
-        .from('wallet_transactions')
-        .update({ status: 'cancelled' })
-        .eq('id', transactionId);
-    } else {
-      // Approve - Process withdrawal
-      await supabase
-        .from('wallet_transactions')
-        .update({ status: 'completed' })
-        .eq('id', transactionId);
-    }
-    
-    fetchTransactions();
-    
-    // Show confirmation
-    alert(approve ? 'Retiro aprobado ✅' : 'Retiro rechazado ❌');
-  };
+  const { transactions, loading, approveTransaction, rejectTransaction } = useFinance(filter);
 
   return (
     <div className="space-y-6">
@@ -139,8 +91,8 @@ export default function FinanceView() {
                   <div className="flex justify-center gap-2">
                     {tx.status === 'pending' && (
                       <>
-                        <button onClick={() => handleAction(tx.id, 'completed')} className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-all" title="Aprobar"><CheckCircle2 size={18} /></button>
-                        <button onClick={() => handleAction(tx.id, 'cancelled')} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Rechazar"><XCircle size={18} /></button>
+                        <button onClick={() => approveTransaction(tx.id)} className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-all" title="Aprobar"><CheckCircle2 size={18} /></button>
+                        <button onClick={() => rejectTransaction(tx.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Rechazar"><XCircle size={18} /></button>
                       </>
                     )}
                   </div>
@@ -194,14 +146,14 @@ export default function FinanceView() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-center gap-3">
-                          <button 
-                            onClick={() => handleWithdrawalApproval(tx.id, true)}
+                          <button
+                            onClick={() => approveTransaction(tx.id)}
                             className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 transition-all"
                           >
                             Aprobar
                           </button>
-                          <button 
-                            onClick={() => handleWithdrawalApproval(tx.id, false)}
+                          <button
+                            onClick={() => rejectTransaction(tx.id)}
                             className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold hover:bg-red-200 transition-all"
                           >
                             Rechazar
