@@ -24,7 +24,7 @@ export default function TableActions({ selectedCount, onExport, onBulkAction, on
       {/* Export */}
       <button
         onClick={() => onExport?.()}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg font-medium transition"
+        className="flex items-center gap-2 px-4 py-2 bg-primary-50 hover:bg-primary-100 text-primary-700 rounded-lg font-medium transition"
       >
         <Download size={18} />
         Exportar CSV

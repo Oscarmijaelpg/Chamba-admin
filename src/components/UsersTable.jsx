@@ -94,7 +94,7 @@ export default function UsersTable() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${user.user_type === 'employer' ? 'bg-indigo-50 text-indigo-600' : 'bg-primary-50 text-primary-600'}`}>
+                  <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${user.user_type === 'employer' ? 'bg-primary-100 text-primary-700' : 'bg-primary-50 text-primary-600'}`}>
                     {user.user_type === 'employer' ? 'Contratador' : 'Trabajador'}
                   </span>
                 </td>
@@ -109,7 +109,7 @@ export default function UsersTable() {
                 <td className="px-6 py-4 text-center">
                   <div className="flex justify-center items-center gap-2">
                     {user.is_admin ? (
-                      <div className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full text-[10px] font-bold">
+                      <div className="flex items-center gap-1 text-primary-700 bg-primary-100 px-2 py-1 rounded-full text-[10px] font-bold">
                         <Shield size={12} /> ADMIN
                       </div>
                     ) : (

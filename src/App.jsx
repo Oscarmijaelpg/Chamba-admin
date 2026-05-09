@@ -67,9 +67,9 @@ function DashboardView({ user }) {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatCard title="Total Usuarios" value={stats.users} icon={Users} color="bg-blue-500" />
+        <StatCard title="Total Usuarios" value={stats.users} icon={Users} color="bg-primary-600" />
         <StatCard title="Chambas Activas" value={stats.chambas} icon={Briefcase} color="bg-primary-500" />
-        <StatCard title="Volumen Pagos" value={`Bs. ${stats.revenue.toLocaleString()}`} icon={TrendingUp} color="bg-indigo-500" />
+        <StatCard title="Volumen Pagos" value={`Bs. ${stats.revenue.toLocaleString()}`} icon={TrendingUp} color="bg-primary-700" />
         <StatCard title="Ganancia App" value={`Bs. ${stats.commission.toLocaleString()}`} icon={Wallet} color="bg-amber-500" />
       </div>
 
