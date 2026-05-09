@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Mail, AlertTriangle, Save, Check } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 export default function AlertsConfig() {
   const [alerts, setAlerts] = useState({
