@@ -1,13 +1,3 @@
-/**
- * Form Validators
- * Utility functions for validating user input
- */
-
-/**
- * Validate email format
- * @param {string} email
- * @returns {object} { valid: boolean, error?: string }
- */
 export const validateEmail = (email) => {
   if (!email) {
     return { valid: false, error: 'Email es requerido' };
@@ -21,11 +11,6 @@ export const validateEmail = (email) => {
   return { valid: true };
 };
 
-/**
- * Validate password strength
- * @param {string} password
- * @returns {object} { valid: boolean, error?: string }
- */
 export const validatePassword = (password) => {
   if (!password) {
     return { valid: false, error: 'Contraseña es requerida' };
@@ -38,12 +23,6 @@ export const validatePassword = (password) => {
   return { valid: true };
 };
 
-/**
- * Validate login credentials
- * @param {string} email
- * @param {string} password
- * @returns {object} { valid: boolean, errors?: object }
- */
 export const validateLoginForm = (email, password) => {
   const errors = {};
 
