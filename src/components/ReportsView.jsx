@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, AlertTriangle, Trash2, CheckCircle, ExternalLink, Filter, MessageSquare } from 'lucide-react';
+import { Search, AlertTriangle, Trash2, CheckCircle, Filter } from 'lucide-react';
 
 export default function ReportsView() {
   const [reports, setReports] = useState([]);

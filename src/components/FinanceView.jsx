@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  ArrowUpRight,
+  ArrowDownLeft,
+  CheckCircle2,
+  XCircle,
   Clock,
-  Download,
-  Filter
+  Download
 } from 'lucide-react';
 
 export default function FinanceView() {
