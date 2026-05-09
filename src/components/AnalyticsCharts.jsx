@@ -14,48 +14,29 @@ export default function AnalyticsCharts() {
 
   const fetchAnalytics = async () => {
     try {
-      // Get last 30 days of user registrations
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      
-      const { data: events } = await supabase
-        .from('analytics_events')
-        .select('event_name, created_at')
-        .gte('created_at', thirtyDaysAgo);
 
-      // Process events by date
+      const [{ data: events }, { data: txs }] = await Promise.all([
+        supabase.from('analytics_events').select('event_name, created_at').gte('created_at', thirtyDaysAgo),
+        supabase.from('wallet_transactions').select('amount, created_at').eq('type', 'deposit').gte('created_at', thirtyDaysAgo),
+      ]);
+
       const eventsByDate = {};
       const eventCounts = {};
-
       events?.forEach(event => {
         const date = new Date(event.created_at).toLocaleDateString();
         eventsByDate[date] = (eventsByDate[date] || 0) + 1;
         eventCounts[event.event_name] = (eventCounts[event.event_name] || 0) + 1;
       });
-
-      setUserTrend(
-        Object.entries(eventsByDate).map(([date, count]) => ({ date, users: count }))
-      );
-
-      setEventStats(
-        Object.entries(eventCounts).map(([name, count]) => ({ name, value: count }))
-      );
-
-      // Get revenue trend
-      const { data: txs } = await supabase
-        .from('wallet_transactions')
-        .select('amount, created_at')
-        .eq('type', 'deposit')
-        .gte('created_at', thirtyDaysAgo);
+      setUserTrend(Object.entries(eventsByDate).map(([date, count]) => ({ date, users: count })));
+      setEventStats(Object.entries(eventCounts).map(([name, count]) => ({ name, value: count })));
 
       const revByDate = {};
       txs?.forEach(tx => {
         const date = new Date(tx.created_at).toLocaleDateString();
         revByDate[date] = (revByDate[date] || 0) + tx.amount;
       });
-
-      setRevenueTrend(
-        Object.entries(revByDate).map(([date, revenue]) => ({ date, revenue }))
-      );
+      setRevenueTrend(Object.entries(revByDate).map(([date, revenue]) => ({ date, revenue })));
 
       setLoading(false);
     } catch (error) {
