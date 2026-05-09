@@ -15,7 +15,7 @@ export const initSentry = () => {
   if (!enableSentry) return;
 
   // Lazy load Sentry
-  import('@sentry/react').then(({ init, setUser }) => {
+  import('@sentry/react').then(({ init, setUser, Replay }) => {
     init({
       dsn: import.meta.env.VITE_SENTRY_DSN,
       environment: environment,
@@ -23,7 +23,7 @@ export const initSentry = () => {
       replaysSessionSampleRate: 0.1,
       replaysOnErrorSampleRate: 1.0,
       integrations: [
-        new Sentry.Replay({
+        new Replay({
           maskAllText: true,
           blockAllMedia: true,
         }),
@@ -161,7 +161,7 @@ export const trackError = (error, context = {}) => {
   };
 
   // Send to Sentry
-  if (import.meta.meta.env.VITE_ENABLE_SENTRY !== 'false') {
+  if (import.meta.env.VITE_ENABLE_SENTRY !== 'false') {
     import('@sentry/react').then(({ captureException }) => {
       captureException(error, { contexts: { custom: context } });
     });
