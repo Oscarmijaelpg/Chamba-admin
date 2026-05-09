@@ -1,29 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { useState } from 'react';
+import { usePricing } from '../hooks/usePricing';
 import { Edit, Save, X, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 
 export default function PricingView() {
-  const [plans, setPlans] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { plans, loading, updatePlan, refetch } = usePricing();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-
-  useEffect(() => {
-    fetchPlans();
-  }, []);
-
-  const fetchPlans = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('pricing_config')
-      .select('*')
-      .order('created_at', { ascending: true });
-    
-    if (!error && data) {
-      setPlans(data);
-    }
-    setLoading(false);
-  };
 
   const handleEdit = (plan) => {
     setEditingId(plan.id);
@@ -31,23 +13,15 @@ export default function PricingView() {
   };
 
   const handleSave = async () => {
-    const { error } = await supabase
-      .from('pricing_config')
-      .update({
-        label: editForm.label,
-        description: editForm.description,
-        price: parseFloat(editForm.price) || 0,
-        credits: editForm.credits ? parseInt(editForm.credits) : null,
-        duration_days: editForm.duration_days ? parseInt(editForm.duration_days) : null,
-        is_active: editForm.is_active,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', editingId);
-
-    if (!error) {
-      fetchPlans();
-      setEditingId(null);
-    }
+    const ok = await updatePlan(editingId, {
+      label: editForm.label,
+      description: editForm.description,
+      price: parseFloat(editForm.price) || 0,
+      credits: editForm.credits ? parseInt(editForm.credits) : null,
+      duration_days: editForm.duration_days ? parseInt(editForm.duration_days) : null,
+      is_active: editForm.is_active,
+    });
+    if (ok) setEditingId(null);
   };
 
   const handleCancel = () => {
@@ -68,8 +42,8 @@ export default function PricingView() {
           <h2 className="text-2xl font-bold text-slate-800">Planes y Precios</h2>
           <p className="text-slate-500 text-sm mt-1">Configura los precios para publicar y destacar contenido.</p>
         </div>
-        <button 
-          onClick={fetchPlans}
+        <button
+          onClick={refetch}
           className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-xl font-bold hover:bg-primary-600 transition-all"
         >
           <RefreshCw size={18} />
