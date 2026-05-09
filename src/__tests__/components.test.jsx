@@ -28,7 +28,7 @@ vi.mock('../lib/supabase', () => ({
   },
 }));
 
-// ─── StatCard (defined inline in App.jsx – reproduce it here for unit testing) ──
+// ─── StatCard (lives in DashboardView.jsx — reproduced aquí para test unitario) ──
 const StatCard = ({ title, value, icon: Icon, color }) => (
   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
     <div className="flex justify-between items-start">
