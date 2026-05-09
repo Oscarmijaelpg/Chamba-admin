@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, CreditCard, Edit, Trash2, Plus, Save, X, DollarSign, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Edit, Save, X, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 
 export default function PricingView() {
   const [plans, setPlans] = useState([]);

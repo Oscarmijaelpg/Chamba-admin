@@ -2,23 +2,6 @@ import React from 'react';
 import { Download, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 export default function TableActions({ selectedCount, onExport, onBulkAction, onDelete }) {
-  const handleExportCSV = (data) => {
-    if (!data || data.length === 0) return;
-
-    const headers = Object.keys(data[0]);
-    const csv = [
-      headers.join(','),
-      ...data.map(row => headers.map(h => `"${row[h] || ''}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `export_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-  };
-
   return (
     <div className="flex gap-3 items-center mb-6">
       {/* Export */}
