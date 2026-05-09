@@ -5,8 +5,12 @@ export function useDashboard(user) {
   const [stats, setStats] = useState({ users: 0, chambas: 0, revenue: 0, commission: 0, reports: 0 });
   const [pendingTx, setPendingTx] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const { count: usersCount } = await supabase
         .from('users').select('*', { count: 'exact', head: true });
@@ -67,7 +71,9 @@ export function useDashboard(user) {
 
       setRecentActivity(activities.slice(0, 5));
     } catch (e) {
-      console.error('Error fetching dashboard stats:', e);
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,5 +92,5 @@ export function useDashboard(user) {
     if (user) fetchDashboardData();
   }, [user]);
 
-  return { stats, pendingTx, recentActivity, handleApprove, handleReject };
+  return { stats, pendingTx, recentActivity, loading, error, handleApprove, handleReject };
 }
