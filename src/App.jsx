@@ -11,7 +11,8 @@ import {
   Bell,
   AlertTriangle,
   Shield,
-  CreditCard
+  CreditCard,
+  TrendingUp
 } from 'lucide-react';
 
 import LoginView from './components/LoginView';
@@ -118,9 +119,11 @@ export default function App() {
               <Bell size={20} />
             </NavLink>
             <div className="flex items-center gap-3 ml-4 bg-white p-2 pr-4 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center text-white font-bold">M</div>
+              <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center text-white font-bold">
+                {(user?.email?.[0] ?? 'A').toUpperCase()}
+              </div>
               <div>
-                <p className="text-sm font-bold text-slate-800">Mijael</p>
+                <p className="text-sm font-bold text-slate-800">{user?.email ?? 'Admin'}</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Super Admin</p>
               </div>
             </div>

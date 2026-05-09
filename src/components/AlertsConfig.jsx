@@ -83,6 +83,9 @@ export default function AlertsConfig() {
                 <label className="font-medium text-slate-800">{label}</label>
               </div>
               <button
+                role="switch"
+                aria-checked={alerts[key]}
+                aria-label={label}
                 onClick={() => setAlerts({ ...alerts, [key]: !alerts[key] })}
                 className={`w-12 h-6 rounded-full transition ${
                   alerts[key] ? 'bg-primary-600' : 'bg-slate-300'
