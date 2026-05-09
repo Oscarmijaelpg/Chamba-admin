@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Shield, AlertTriangle, Ban, CheckCircle2, MessageSquare } from 'lucide-react';
+import { X, AlertTriangle, Ban, CheckCircle2, MessageSquare } from 'lucide-react';
 
 export default function ModerationModal({ isOpen, onClose, item, onAction }) {
   const [reason, setReason] = useState('');

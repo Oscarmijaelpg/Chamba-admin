@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Info, Percent, Tag, BellRing } from 'lucide-react';
+import { Save, Percent, Tag, BellRing } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function SettingsView() {
@@ -90,7 +90,7 @@ export default function SettingsView() {
 
         {/* Categorías y App */}
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
-          <div className="flex items-center gap-3 text-indigo-600">
+          <div className="flex items-center gap-3 text-primary-600">
             <Tag size={20} />
             <h3 className="font-bold">General</h3>
           </div>
