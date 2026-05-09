@@ -1,39 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { useState } from 'react';
+import { useReports } from '../hooks/useReports';
 import { AlertTriangle, Trash2, CheckCircle } from 'lucide-react';
 
 export default function ReportsView() {
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
-
-  useEffect(() => {
-    fetchReports();
-  }, [filter]);
-
-  const fetchReports = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('chamba_reports')
-      .select('*, reporter:users!reporter_id(full_name), chamba:chambas!chamba_id(title, status, employer_id)')
-      .eq('status', filter)
-      .order('created_at', { ascending: false });
-    
-    if (!error) setReports(data || []);
-    setLoading(false);
-  };
+  const { reports, loading, resolveReport } = useReports(filter);
 
   const handleResolve = async (reportId, chambaId, action) => {
-    if (action === 'delete') {
-      if (!confirm('¿Eliminar la chamba reportada?')) return;
-      await supabase.from('chambas').delete().eq('id', chambaId);
-    }
-    
-    await supabase.from('chamba_reports')
-      .update({ status: 'resolved' })
-      .eq('id', reportId);
-    
-    fetchReports();
+    if (action === 'delete' && !confirm('¿Eliminar la chamba reportada?')) return;
+    resolveReport(reportId, chambaId, action === 'delete');
   };
 
   const getFilterBtnClass = (val) => (
