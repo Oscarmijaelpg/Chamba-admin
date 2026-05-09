@@ -1,56 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Save, Percent, Tag, BellRing } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { useSettings } from '../hooks/useSettings';
 
 export default function SettingsView() {
-  const [loading, setLoading] = useState(false);
-  const [settings, setSettings] = useState({
-    min_withdrawal: 50,
-    app_name: 'Chamba App',
-    maintenance_mode: false,
-    announcement: '',
-    min_version: '1.0.0',
-    store_url: 'https://play.google.com/store/apps/details?id=com.chamba.app'
-  });
-
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('app_config')
-        .select('*')
-        .eq('id', 'global_settings')
-        .single();
-      
-      if (data && data.value) {
-        setSettings(data.value);
-      }
-    } catch (e) {
-      console.error('Error fetching settings:', e);
-    }
-  };
+  const { settings, setSettings, loading, save } = useSettings();
 
   const handleSave = async () => {
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from('app_config')
-        .upsert({ 
-          id: 'global_settings', 
-          value: settings,
-          updated_at: new Date() 
-        });
-
-      if (error) throw error;
-      alert('Ajustes guardados correctamente.');
-    } catch (e) {
-      alert('Error al guardar: ' + e.message);
-    } finally {
-      setLoading(false);
-    }
+    const error = await save(settings);
+    if (error) alert('Error al guardar: ' + error.message);
+    else alert('Ajustes guardados correctamente.');
   };
 
   return (
