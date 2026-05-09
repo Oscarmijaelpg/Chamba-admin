@@ -3,14 +3,12 @@ import { X, AlertTriangle, Ban, CheckCircle2, MessageSquare } from 'lucide-react
 
 export default function ModerationModal({ isOpen, onClose, item, onAction }) {
   const [reason, setReason] = useState('');
-  const [actionType, setActionType] = useState('');
 
   if (!isOpen || !item) return null;
 
   const handleAction = (type) => {
     onAction?.(item.id, type, reason);
     setReason('');
-    setActionType('');
     onClose?.();
   };
 

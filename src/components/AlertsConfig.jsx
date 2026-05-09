@@ -18,18 +18,16 @@ export default function AlertsConfig() {
 
   const fetchAlerts = async () => {
     try {
-      // For now, use localStorage (in production, save to DB)
       const stored = localStorage.getItem('admin_alerts');
       if (stored) {
         setAlerts(JSON.parse(stored));
       }
-      
+
       const storedEmail = localStorage.getItem('admin_email') || 'admin@chamba.app';
       setEmail(storedEmail);
-      
+
       setLoading(false);
-    } catch (error) {
-      console.error('Error fetching alerts:', error);
+    } catch {
       setLoading(false);
     }
   };
@@ -38,11 +36,11 @@ export default function AlertsConfig() {
     try {
       localStorage.setItem('admin_alerts', JSON.stringify(alerts));
       localStorage.setItem('admin_email', email);
-      
+
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch (error) {
-      console.error('Error saving alerts:', error);
+    } catch {
+      // nada — localStorage inaccesible (Private Browsing sin quota)
     }
   };
 
