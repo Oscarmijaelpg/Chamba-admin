@@ -1,38 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { useState } from 'react';
 import { Search, MapPin, Trash2, ExternalLink } from 'lucide-react';
+import { useChambas } from '../hooks/useChambas';
 
 export default function ChambasTable() {
-  const [chambas, setChambas] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { chambas, loading, updateStatus, deleteChamba } = useChambas();
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchChambas();
-  }, []);
-
-  const fetchChambas = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('chambas')
-      .select('*, employer:users(full_name)')
-      .order('created_at', { ascending: false });
-    if (!error) setChambas(data || []);
-    setLoading(false);
-  };
-
-  const handleStatusChange = async (id, newStatus) => {
-    const { error } = await supabase
-      .from('chambas')
-      .update({ status: newStatus })
-      .eq('id', id);
-    if (!error) fetchChambas();
-  };
+  const handleStatusChange = (id, newStatus) => updateStatus(id, newStatus);
 
   const handleDelete = async (id) => {
     if (confirm('¿Estás seguro de que quieres eliminar esta chamba? Esta acción no se puede deshacer.')) {
-      const { error } = await supabase.from('chambas').delete().eq('id', id);
-      if (!error) fetchChambas();
+      await deleteChamba(id);
     }
   };
 
@@ -44,7 +22,7 @@ export default function ChambasTable() {
   const getStatusColor = (status) => {
     switch (status) {
       case 'open': return 'bg-primary-50 text-primary-600';
-      case 'in_progress': return 'bg-blue-50 text-blue-600';
+      case 'in_progress': return 'bg-primary-50 text-primary-700';
       case 'completed': return 'bg-slate-100 text-slate-600';
       case 'cancelled': return 'bg-red-50 text-red-600';
       default: return 'bg-slate-50 text-slate-400';

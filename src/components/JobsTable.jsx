@@ -1,42 +1,17 @@
-// src/components/JobsTable.jsx - TABLA DE TRABAJOS
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { useState } from 'react';
 import { Search, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { useJobs } from '../hooks/useJobs';
 
 export default function JobsTable() {
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { jobs, loading, updateStatus, deleteJob } = useJobs();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
-
-  const fetchJobs = async () => {
-    setLoading(true);
-    let query = supabase
-      .from('jobs')
-      .select('*, employer:users(full_name, email)')
-      .order('created_at', { ascending: false });
-    
-    const { data, error } = await query;
-    if (!error) setJobs(data || []);
-    setLoading(false);
-  };
-
-  const handleStatusChange = async (id, newStatus) => {
-    const { error } = await supabase
-      .from('jobs')
-      .update({ status: newStatus })
-      .eq('id', id);
-    if (!error) fetchJobs();
-  };
+  const handleStatusChange = (id, newStatus) => updateStatus(id, newStatus);
 
   const handleDelete = async (id) => {
     if (confirm('¿Eliminar este trabajo?')) {
-      const { error } = await supabase.from('jobs').delete().eq('id', id);
-      if (!error) fetchJobs();
+      await deleteJob(id);
     }
   };
 
