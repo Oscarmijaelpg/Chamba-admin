@@ -88,7 +88,7 @@ export default function AuditLogsView() {
   };
 
   const getActionColor = (action) => {
-    if (action?.includes('register')) return 'bg-blue-100 text-blue-600';
+    if (action?.includes('register')) return 'bg-primary-100 text-primary-700';
     if (action?.includes('chamba') && action?.includes('create')) return 'bg-green-100 text-green-600';
     if (action?.includes('chamba') && action?.includes('delete')) return 'bg-red-100 text-red-600';
     if (action?.includes('payment') && action?.includes('deposit')) return 'bg-emerald-100 text-emerald-600';
@@ -128,7 +128,7 @@ export default function AuditLogsView() {
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-100">
           <p className="text-slate-500 text-xs font-bold uppercase">Usuarios</p>
-          <p className="text-2xl font-bold text-blue-600 mt-1">{stats.users}</p>
+          <p className="text-2xl font-bold text-primary-700 mt-1">{stats.users}</p>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-100">
           <p className="text-slate-500 text-xs font-bold uppercase">Chambas</p>

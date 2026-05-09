@@ -58,7 +58,7 @@ export default function PricingView() {
   const getTypeBadge = (id) => {
     if (id.includes('premium')) return <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-lg">Premium</span>;
     if (id.includes('highlight')) return <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded-lg">Destacado</span>;
-    return <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg">Pago Único</span>;
+    return <span className="px-2 py-1 bg-primary-100 text-primary-700 text-xs font-bold rounded-lg">Pago Único</span>;
   };
 
   return (
@@ -184,7 +184,7 @@ export default function PricingView() {
                         ) : (
                           <button 
                             onClick={() => handleEdit(plan)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            className="p-2 text-primary-700 hover:bg-primary-50 rounded-lg transition-all"
                             title="Editar"
                           >
                             <Edit size={18} />

@@ -81,9 +81,9 @@ export default function SettingsView() {
                 onChange={(e) => setSettings({...settings, min_withdrawal: e.target.value})}
               />
             </div>
-            <div className="p-4 bg-blue-50 rounded-xl">
-              <p className="text-xs text-blue-700 font-medium">💡 Modelo de ingresos: Planes Premium</p>
-              <p className="text-[10px] text-blue-600 mt-1">Los usuarios pagan por publicar o por planes premium. No hay comisión por transacción.</p>
+            <div className="p-4 bg-primary-50 rounded-xl">
+              <p className="text-xs text-primary-700 font-medium">💡 Modelo de ingresos: Planes Premium</p>
+              <p className="text-[10px] text-primary-600 mt-1">Los usuarios pagan por publicar o por planes premium. No hay comisión por transacción.</p>
             </div>
           </div>
         </div>
