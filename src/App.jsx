@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate, NavLink, useNavigate } from 'react-router-dom';
-import { supabase } from './lib/supabase';
 import {
   LayoutDashboard,
   Users,
@@ -31,6 +30,7 @@ import AnalyticsCharts from './components/AnalyticsCharts';
 import AlertsConfig from './components/AlertsConfig';
 import DarkModeToggle from './components/DarkModeToggle';
 import { useDashboard } from './hooks/useDashboard';
+import { useAuth } from './hooks/useAuth';
 
 const NAV_ITEMS = [
   { path: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
@@ -149,21 +149,7 @@ function DashboardView({ user }) {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      setAuthLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const { user, loading: authLoading, signOut } = useAuth();
 
   if (authLoading) {
     return (
@@ -209,7 +195,7 @@ export default function App() {
         <div className="p-4 border-t border-slate-100 space-y-3">
           <DarkModeToggle />
           <button
-            onClick={() => supabase.auth.signOut()}
+            onClick={signOut}
             className="flex items-center gap-3 px-4 py-3 text-red-500 font-medium w-full hover:bg-red-50 rounded-xl transition-all"
           >
             <LogOut size={20} />
