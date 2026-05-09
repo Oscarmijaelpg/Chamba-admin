@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Briefcase, 
-  Wallet, 
-  Settings, 
-  LogOut, 
-  Search, 
+import {
+  LayoutDashboard,
+  Users,
+  Briefcase,
+  Wallet,
+  Settings,
+  LogOut,
+  Search,
   Bell,
   TrendingUp,
   CheckCircle2,
@@ -17,10 +17,7 @@ import {
   CreditCard
 } from 'lucide-react';
 
-// Auth
 import LoginView from './components/LoginView';
-
-// Vistas
 import UsersTable from './components/UsersTable';
 import ChambasTable from './components/ChambasTable';
 import FinanceView from './components/FinanceView';
@@ -31,10 +28,8 @@ import PricingView from './components/PricingView';
 import JobsTable from './components/JobsTable';
 import AnalyticsCharts from './components/AnalyticsCharts';
 import AlertsConfig from './components/AlertsConfig';
-import TableSearch from './components/TableSearch';
-import TableActions from './components/TableActions';
-import ModerationModal from './components/ModerationModal';
 import DarkModeToggle from './components/DarkModeToggle';
+import { useDashboard } from './hooks/useDashboard';
 
 // Componentes Simples
 const StatCard = ({ title, value, icon: Icon, color }) => (
@@ -55,12 +50,8 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [pendingTx, setPendingTx] = useState([]);
-  const [stats, setStats] = useState({ users: 0, chambas: 0, revenue: 0, commission: 0, reports: 0 });
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [moderationModal, setModerationModal] = useState({ isOpen: false, item: null });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRows, setSelectedRows] = useState([]);
+
+  const { stats, pendingTx, recentActivity, handleApprove, handleReject } = useDashboard(user);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -74,104 +65,6 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (user) fetchDashboardData();
-  }, [user]);
-
-  const fetchDashboardData = async () => {
-    try {
-      // Usuarios totales
-      const { count: usersCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
-      
-      // Chambas abiertas o en progreso
-      const { count: chambasCount } = await supabase.from('chambas').select('*', { count: 'exact', head: true }).neq('status', 'completed');
-      
-      // Calcular volumen total (suma de depósitos completados)
-      const { data: allTx } = await supabase.from('wallet_transactions').select('amount').eq('type', 'deposit').eq('status', 'completed');
-      const totalRevenue = allTx?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
-
-      // Calcular ganancias de la app (comisiones de pagos liberados)
-      const { data: payments } = await supabase.from('payments').select('amount').eq('status', 'released');
-      
-      const { count: reportsCount } = await supabase.from('chamba_reports').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-
-      // Obtener comisión actual de config
-      const { data: configData } = await supabase.from('app_config').select('value').eq('id', 'global_settings').single();
-      const commRate = configData?.value?.commission_rate || 10;
-      
-      const totalCommission = payments?.reduce((acc, curr) => acc + (curr.amount * (commRate / 100)), 0) || 0;
-
-      const { data: tx } = await supabase.from('wallet_transactions')
-        .select('*, users(full_name)')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-      
-      setStats({ 
-        users: usersCount || 0, 
-        chambas: chambasCount || 0, 
-        revenue: totalRevenue,
-        commission: totalCommission,
-        reports: reportsCount || 0
-      });
-      setPendingTx(tx || []);
-
-      // Fetch recent activity from multiple tables
-      const activities = [];
-
-      // Recent chambas
-      const { data: recentChambas } = await supabase
-        .from('chambas')
-        .select('created_at')
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (recentChambas?.length) {
-        const diff = Date.now() - new Date(recentChambas[0].created_at).getTime();
-        const mins = Math.floor(diff / 60000);
-        activities.push({ id: 1, text: "Nueva chamba publicada", time: mins < 60 ? `hace ${mins} min` : `hace ${Math.floor(mins/60)}h`, icon: 'briefcase' });
-      }
-
-      // Recent users
-      const { data: recentUsers } = await supabase
-        .from('users')
-        .select('created_at, is_verified')
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (recentUsers?.length) {
-        const diff = Date.now() - new Date(recentUsers[0].created_at).getTime();
-        const mins = Math.floor(diff / 60000);
-        activities.push({ id: 2, text: recentUsers[0].is_verified ? "Usuario verificado" : "Nuevo usuario registrado", time: mins < 60 ? `hace ${mins} min` : `hace ${Math.floor(mins/60)}h`, icon: 'user' });
-      }
-
-      // Recent wallet transactions
-      const { data: recentTx } = await supabase
-        .from('wallet_transactions')
-        .select('type, created_at')
-        .in('type', ['deposit', 'withdrawal'])
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (recentTx?.length) {
-        const diff = Date.now() - new Date(recentTx[0].created_at).getTime();
-        const mins = Math.floor(diff / 60000);
-        activities.push({ id: 3, text: recentTx[0].type === 'deposit' ? "Depósito recibido" : "Retiro procesado", time: mins < 60 ? `hace ${mins} min` : `hace ${Math.floor(mins/60)}h`, icon: 'wallet' });
-      }
-
-      setRecentActivity(activities.slice(0, 5));
-    } catch (e) {
-      console.error('Error fetching dashboard stats:', e);
-    }
-  };
-
-  const handleApprove = async (id) => {
-    const { error } = await supabase.from('wallet_transactions').update({ status: 'completed' }).eq('id', id);
-    if (!error) fetchDashboardData();
-  };
-
-  const handleReject = async (id) => {
-    if (!window.confirm('¿Rechazar esta transacción?')) return;
-    const { error } = await supabase.from('wallet_transactions').update({ status: 'failed' }).eq('id', id);
-    if (!error) fetchDashboardData();
-  };
 
   const renderContent = () => {
     switch (activeTab) {
