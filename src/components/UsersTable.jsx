@@ -78,12 +78,14 @@ export default function UsersTable() {
           <tbody className="divide-y divide-slate-50">
             {loading ? (
               <tr><td colSpan="7" className="px-6 py-10 text-center text-slate-400">Cargando usuarios...</td></tr>
+            ) : filteredUsers.length === 0 ? (
+              <tr><td colSpan="7" className="px-6 py-10 text-center text-slate-400">No se encontraron usuarios</td></tr>
             ) : filteredUsers.map((user) => (
               <tr key={user.id} className="hover:bg-slate-50/50 transition-all">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 overflow-hidden">
-                      {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" /> : user.full_name?.charAt(0)}
+                      {user.avatar_url ? <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" /> : user.full_name?.charAt(0)}
                     </div>
                     <div>
                       <p className="font-bold text-slate-800 text-sm">{user.full_name}</p>

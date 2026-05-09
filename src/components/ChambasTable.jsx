@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, MapPin, Trash2, ExternalLink, Filter } from 'lucide-react';
+import { Search, MapPin, Trash2, ExternalLink } from 'lucide-react';
 
 export default function ChambasTable() {
   const [chambas, setChambas] = useState([]);
@@ -55,31 +55,28 @@ export default function ChambasTable() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">Moderación de Chambas</h2>
-        <div className="flex gap-4">
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input 
-              type="text" 
-              placeholder="Buscar por título o descripción..." 
-              className="w-full pl-10 pr-4 py-2 bg-white rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 text-sm font-medium hover:bg-slate-50 transition-all">
-            <Filter size={16} /> Filtrar
-          </button>
+        <div className="relative w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            type="text"
+            placeholder="Buscar por título o descripción..."
+            className="w-full pl-10 pr-4 py-2 bg-white rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
         {loading ? (
           <div className="text-center py-20 text-slate-400">Cargando chambas...</div>
+        ) : filteredChambas.length === 0 ? (
+          <div className="text-center py-20 text-slate-400">No se encontraron chambas</div>
         ) : filteredChambas.map((chamba) => (
           <div key={chamba.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex gap-6 hover:border-primary-200 transition-all">
             <div className="w-24 h-24 rounded-xl bg-slate-50 overflow-hidden shrink-0 border border-slate-100">
               {chamba.images && chamba.images[0] ? (
-                <img src={chamba.images[0]} className="w-full h-full object-cover" />
+                <img src={chamba.images[0]} alt={chamba.title} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-slate-300">
                   <MapPin size={24} />
