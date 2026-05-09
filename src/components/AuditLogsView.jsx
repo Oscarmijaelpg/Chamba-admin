@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { useState } from 'react';
+import { useAuditLogs } from '../hooks/useAuditLogs';
 import { Search, Clock, User, Shield, AlertTriangle, RefreshCw } from 'lucide-react';
 
 const ACTION_LABELS = {
@@ -22,52 +22,10 @@ const ACTION_LABELS = {
 };
 
 export default function AuditLogsView() {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
   const [dateRange, setDateRange] = useState('today');
-
-  useEffect(() => {
-    fetchLogs();
-  }, [actionFilter, dateRange]);
-
-  const fetchLogs = async () => {
-    setLoading(true);
-    try {
-      let query = supabase
-        .from('audit_logs')
-        .select('*, user:users(full_name, email)')
-        .order('created_at', { ascending: false });
-
-      // Filter by date
-      if (dateRange === 'today') {
-        query = query.gte('created_at', new Date().toISOString().split('T')[0]);
-      } else if (dateRange === 'week') {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        query = query.gte('created_at', weekAgo.toISOString());
-      } else if (dateRange === 'month') {
-        const monthAgo = new Date();
-        monthAgo.setMonth(monthAgo.getMonth() - 1);
-        query = query.gte('created_at', monthAgo.toISOString());
-      }
-
-      // Filter by action
-      if (actionFilter !== 'all') {
-        query = query.like('action', `${actionFilter}%`);
-      }
-
-      const { data, error } = await query.limit(200);
-      
-      if (!error) setLogs(data || []);
-    } catch (e) {
-      console.error('Error fetching audit logs:', e);
-      // Si no existe la tabla, usar datos demo
-      setLogs([]);
-    }
-    setLoading(false);
-  };
+  const { logs, loading, refresh } = useAuditLogs(actionFilter, dateRange);
 
   const filteredLogs = logs.filter(log => {
     if (!search) return true;
@@ -96,11 +54,10 @@ export default function AuditLogsView() {
     return 'bg-slate-100 text-slate-600';
   };
 
-  // Stats
   const stats = {
     total: logs.length,
     users: logs.filter(l => l.action?.includes('user')).length,
-    Chambas: logs.filter(l => l.action?.includes('chamba')).length,
+    chambas: logs.filter(l => l.action?.includes('chamba')).length,
     payments: logs.filter(l => l.action?.includes('payment')).length,
   };
 
@@ -111,8 +68,8 @@ export default function AuditLogsView() {
           <h2 className="text-2xl font-bold text-slate-800">Registro de Actividad</h2>
           <p className="text-slate-500 text-sm mt-1">Auditoría de todas las acciones en la plataforma.</p>
         </div>
-        <button 
-          onClick={fetchLogs}
+        <button
+          onClick={refresh}
           className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-xl font-bold hover:bg-primary-600 transition-all"
         >
           <RefreshCw size={18} />
@@ -132,7 +89,7 @@ export default function AuditLogsView() {
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-100">
           <p className="text-slate-500 text-xs font-bold uppercase">Chambas</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{stats.Chambas}</p>
+          <p className="text-2xl font-bold text-green-600 mt-1">{stats.chambas}</p>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-100">
           <p className="text-slate-500 text-xs font-bold uppercase">Pagos</p>
