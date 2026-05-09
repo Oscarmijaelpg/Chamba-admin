@@ -1,44 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { useState } from 'react';
+import { useUsers } from '../hooks/useUsers';
 import { Search, MoreVertical, Shield, ShieldAlert, CheckCircle } from 'lucide-react';
 
 export default function UsersTable() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { users, loading, setBanned } = useUsers();
   const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (!error) setUsers(data || []);
-    setLoading(false);
-  };
 
   const toggleBan = async (user) => {
     const newStatus = !user.is_banned;
-    const confirmMsg = newStatus 
+    const confirmMsg = newStatus
       ? `¿Estás seguro de que quieres BANEAR a ${user.full_name}? No podrá entrar a la app.`
       : `¿Quieres quitar el ban a ${user.full_name}?`;
-    
-    if (confirm(confirmMsg)) {
-      const { error } = await supabase
-        .from('users')
-        .update({ is_banned: newStatus })
-        .eq('id', user.id);
-      
-      if (!error) {
-        fetchUsers();
-      } else {
-        alert('Error al actualizar el estado del usuario: ' + error.message);
-      }
-    }
+    if (!confirm(confirmMsg)) return;
+    const error = await setBanned(user.id, newStatus);
+    if (error) alert('Error al actualizar el estado del usuario: ' + error.message);
   };
 
   const filteredUsers = users.filter(u => 
