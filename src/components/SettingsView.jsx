@@ -45,11 +45,7 @@ export default function SettingsView() {
         });
 
       if (error) throw error;
-      
-      // Intentar actualizar la tabla 'chamba_config' también para compatibilidad si existe
-      await supabase.from('chamba_config').upsert({ id: 1, commission_rate: settings.commission_rate });
-
-      alert('Ajustes guardados correctamente en la base de datos. 🙂🗣');
+      alert('Ajustes guardados correctamente.');
     } catch (e) {
       alert('Error al guardar: ' + e.message);
     } finally {

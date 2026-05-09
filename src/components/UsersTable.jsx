@@ -36,7 +36,7 @@ export default function UsersTable() {
       if (!error) {
         fetchUsers();
       } else {
-        alert('Error al actualizar el estado del usuario. ¿Ya ejecutaste el SQL de is_banned?');
+        alert('Error al actualizar el estado del usuario: ' + error.message);
       }
     }
   };
