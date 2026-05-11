@@ -30,7 +30,7 @@ export function useSettings() {
     try {
       const { error } = await supabase
         .from('app_config')
-        .upsert({ id: 'global_settings', value: values, updated_at: new Date() });
+        .upsert({ id: 'global_settings', value: values, updated_at: new Date().toISOString() });
       if (error) throw error;
       return null;
     } catch (e) {
