@@ -1,18 +1,32 @@
-import React from 'react';
-import { Save, Percent, Tag, BellRing } from 'lucide-react';
+import React, { useState } from 'react';
+import { Save, Percent, Tag, BellRing, Check, AlertCircle } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
 
 export default function SettingsView() {
   const { settings, setSettings, loading, save } = useSettings();
+  const [toast, setToast] = useState(null); // { type: 'ok'|'error', msg }
+
+  const showToast = (type, msg) => {
+    setToast({ type, msg });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const handleSave = async () => {
     const error = await save(settings);
-    if (error) alert('Error al guardar: ' + error.message);
-    else alert('Ajustes guardados correctamente.');
+    if (error) showToast('error', error.message);
+    else showToast('ok', 'Ajustes guardados correctamente.');
   };
 
   return (
     <div className="max-w-4xl space-y-8">
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-sm font-semibold transition-all ${
+          toast.type === 'ok' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`}>
+          {toast.type === 'ok' ? <Check size={16} /> : <AlertCircle size={16} />}
+          {toast.msg}
+        </div>
+      )}
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Ajustes de la Plataforma</h2>
         <p className="text-slate-500 text-sm mt-1">Configura las reglas de negocio y parámetros globales.</p>
