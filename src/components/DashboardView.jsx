@@ -4,15 +4,16 @@ import { Users, Briefcase, Wallet, TrendingUp, CheckCircle2, XCircle } from 'luc
 import { useDashboard } from '../hooks/useDashboard';
 import UserGrowthChart from './UserGrowthChart';
 
-const StatCard = ({ title, value, icon: Icon, color }) => (
-  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-    <div className="flex justify-between items-start">
-      <div>
-        <p className="text-slate-500 text-sm font-medium">{title}</p>
-        <h3 className="text-2xl font-bold mt-2 text-slate-800">{value}</h3>
+const StatCard = ({ title, value, icon: Icon, color, sub }) => (
+  <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-100">
+    <div className="flex justify-between items-start gap-2">
+      <div className="min-w-0">
+        <p className="text-slate-500 text-xs sm:text-sm font-medium leading-tight">{title}</p>
+        <h3 className="text-xl sm:text-2xl font-bold mt-1.5 text-slate-800 truncate">{value}</h3>
+        {sub && <p className="text-[10px] text-slate-400 mt-0.5 truncate">{sub}</p>}
       </div>
-      <div className={`p-3 rounded-xl ${color}`}>
-        <Icon size={20} className="text-white" />
+      <div className={`p-2.5 rounded-xl shrink-0 ${color}`}>
+        <Icon size={18} className="text-white" />
       </div>
     </div>
   </div>
@@ -24,10 +25,11 @@ export default function DashboardView({ user }) {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard title="Total Usuarios" value={stats.users} icon={Users} color="bg-primary-600" />
+        <StatCard title="Activos 30 días" value={stats.activeUsers} icon={TrendingUp} color="bg-emerald-500" sub="usuarios con actividad" />
         <StatCard title="Chambas Activas" value={stats.chambas} icon={Briefcase} color="bg-primary-500" />
-        <StatCard title="Volumen Pagos" value={`Bs. ${stats.revenue.toLocaleString()}`} icon={TrendingUp} color="bg-primary-700" />
+        <StatCard title="Volumen Pagos" value={`Bs. ${stats.revenue.toLocaleString()}`} icon={Wallet} color="bg-primary-700" />
         <StatCard title="Ganancia App" value={`Bs. ${stats.commission.toLocaleString()}`} icon={Wallet} color="bg-amber-500" />
       </div>
 

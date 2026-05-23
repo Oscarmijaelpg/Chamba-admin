@@ -7,7 +7,7 @@ function relTime(isoString) {
 }
 
 export function useDashboard(user) {
-  const [stats, setStats] = useState({ users: 0, chambas: 0, revenue: 0, commission: 0, reports: 0 });
+  const [stats, setStats] = useState({ users: 0, chambas: 0, revenue: 0, commission: 0, reports: 0, activeUsers: 0 });
   const [pendingTx, setPendingTx] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +17,10 @@ export function useDashboard(user) {
     setLoading(true);
     setError(null);
     try {
+      const since30d = new Date();
+      since30d.setDate(since30d.getDate() - 30);
+      since30d.setHours(0, 0, 0, 0);
+
       const [
         { count: usersCount },
         { count: chambasCount },
@@ -28,6 +32,7 @@ export function useDashboard(user) {
         { data: recentChambas },
         { data: recentUsers },
         { data: recentTxActivity },
+        { data: activeUsersData },
       ] = await Promise.all([
         supabase.from('users').select('*', { count: 'exact', head: true }),
         supabase.from('chambas').select('*', { count: 'exact', head: true }).neq('status', 'completed'),
@@ -39,13 +44,15 @@ export function useDashboard(user) {
         supabase.from('chambas').select('created_at').order('created_at', { ascending: false }).limit(1),
         supabase.from('users').select('created_at, is_verified').order('created_at', { ascending: false }).limit(1),
         supabase.from('wallet_transactions').select('type, created_at').in('type', ['deposit', 'withdrawal']).order('created_at', { ascending: false }).limit(1),
+        supabase.from('audit_logs').select('user_id').gte('created_at', since30d.toISOString()),
       ]);
 
       const commRate = configData?.value?.commission_rate || 10;
       const totalRevenue = allTx?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
       const totalCommission = payments?.reduce((acc, curr) => acc + (curr.amount * (commRate / 100)), 0) || 0;
+      const activeUsers = new Set(activeUsersData?.map(r => r.user_id).filter(Boolean)).size;
 
-      setStats({ users: usersCount || 0, chambas: chambasCount || 0, revenue: totalRevenue, commission: totalCommission, reports: reportsCount || 0 });
+      setStats({ users: usersCount || 0, chambas: chambasCount || 0, revenue: totalRevenue, commission: totalCommission, reports: reportsCount || 0, activeUsers });
       setPendingTx(tx || []);
 
       const activities = [];
