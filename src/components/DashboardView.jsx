@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Briefcase, Wallet, TrendingUp, CheckCircle2, XCircle } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard';
+import UserGrowthChart from './UserGrowthChart';
 
 const StatCard = ({ title, value, icon: Icon, color }) => (
   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -29,6 +30,8 @@ export default function DashboardView({ user }) {
         <StatCard title="Volumen Pagos" value={`Bs. ${stats.revenue.toLocaleString()}`} icon={TrendingUp} color="bg-primary-700" />
         <StatCard title="Ganancia App" value={`Bs. ${stats.commission.toLocaleString()}`} icon={Wallet} color="bg-amber-500" />
       </div>
+
+      <UserGrowthChart />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
