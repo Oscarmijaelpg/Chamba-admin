@@ -15,14 +15,14 @@ export default function FinanceView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Control Financiero</h2>
           <p className="text-slate-500 text-sm mt-1">Gestión de recargas, retiros y pagos en escrow.</p>
         </div>
-        <div className="flex gap-3">
-          <select 
-            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+        <div className="flex gap-3 sm:ml-auto">
+          <select
+            className="flex-1 sm:flex-none bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
@@ -31,14 +31,15 @@ export default function FinanceView() {
             <option value="completed">Completados</option>
             <option value="cancelled">Rechazados</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 shadow-lg shadow-primary-200 transition-all">
+          <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 shadow-lg shadow-primary-200 transition-all whitespace-nowrap">
             <Download size={16} /> Exportar
           </button>
         </div>
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <table className="w-full text-left">
+        <div className="overflow-x-auto">
+        <table className="w-full text-left min-w-[560px]">
           <thead>
             <tr className="bg-slate-50 text-slate-400 text-[11px] uppercase tracking-widest font-bold">
               <th className="px-6 py-4">Transacción</th>
@@ -101,6 +102,7 @@ export default function FinanceView() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Withdrawals Section */}
@@ -111,13 +113,14 @@ export default function FinanceView() {
         </div>
 
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-          <table className="w-full text-left">
+          <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[400px]">
             <thead>
               <tr className="bg-slate-50 text-slate-400 text-[11px] uppercase tracking-widest font-bold">
-                <th className="px-6 py-4">Usuario</th>
-                <th className="px-6 py-4">Monto</th>
-                <th className="px-6 py-4">Fecha</th>
-                <th className="px-6 py-4 text-center">Acciones</th>
+                <th className="px-4 py-3">Usuario</th>
+                <th className="px-4 py-3">Monto</th>
+                <th className="px-4 py-3">Fecha</th>
+                <th className="px-4 py-3 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -132,20 +135,20 @@ export default function FinanceView() {
                   .filter(tx => tx.type === 'withdrawal' && tx.status === 'pending')
                   .map((tx) => (
                     <tr key={tx.id} className="hover:bg-slate-50/50 transition-all">
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <div>
                           <p className="font-bold text-slate-800 text-sm">{tx.users?.full_name}</p>
                           <p className="text-xs text-slate-400">{tx.users?.email}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="font-bold text-red-600">- Bs. {parseFloat(tx.amount).toFixed(2)}</span>
+                      <td className="px-4 py-3">
+                        <span className="font-bold text-red-600 whitespace-nowrap">- Bs. {parseFloat(tx.amount).toFixed(2)}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-500 text-sm">
+                      <td className="px-4 py-3 text-slate-500 text-sm whitespace-nowrap">
                         {new Date(tx.created_at).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex justify-center gap-3">
+                      <td className="px-4 py-3">
+                        <div className="flex justify-center gap-2">
                           <button
                             onClick={() => approveTransaction(tx.id)}
                             className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 transition-all"
@@ -165,6 +168,7 @@ export default function FinanceView() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -12,7 +12,9 @@ import {
   AlertTriangle,
   Shield,
   CreditCard,
-  TrendingUp
+  TrendingUp,
+  Menu,
+  X
 } from 'lucide-react';
 
 import LoginView from './components/LoginView';
@@ -46,6 +48,7 @@ const NAV_ITEMS = [
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (authLoading) {
     return (
@@ -59,21 +62,40 @@ export default function App() {
     return <LoginView />;
   }
 
+  const closeSidebar = () => setSidebarOpen(false);
+
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
+      {/* Overlay mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-20 md:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col sticky top-0 h-screen">
-        <div className="p-8">
+      <aside className={`
+        fixed md:sticky top-0 left-0 h-screen z-30
+        w-64 bg-white border-r border-slate-200 flex flex-col
+        transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <div className="p-6 flex items-center justify-between">
           <h1 className="text-2xl font-black text-primary-600 tracking-tighter">
             CHAMBA <span className="text-slate-400 text-xs font-bold uppercase tracking-widest block">Admin Dash</span>
           </h1>
+          <button onClick={closeSidebar} className="md:hidden p-1 text-slate-400 hover:text-slate-600">
+            <X size={20} />
+          </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map(item => (
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={closeSidebar}
               className={({ isActive }) =>
                 `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
                   isActive
@@ -101,9 +123,17 @@ export default function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <header className="flex justify-between items-center mb-10">
-          <div className="relative w-96">
+      <main className="flex-1 min-w-0 p-4 md:p-8 overflow-y-auto">
+        <header className="flex items-center gap-3 mb-6 md:mb-10">
+          {/* Hamburger mobile */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden p-2 bg-white rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all shrink-0"
+          >
+            <Menu size={20} />
+          </button>
+
+          <div className="relative flex-1 md:max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
@@ -111,19 +141,20 @@ export default function App() {
               className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all shadow-sm"
             />
           </div>
-          <div className="flex items-center gap-4">
+
+          <div className="flex items-center gap-2 shrink-0">
             <NavLink
               to="/reports"
-              className="p-3 bg-white rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all relative"
+              className="p-3 bg-white rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all"
             >
               <Bell size={20} />
             </NavLink>
-            <div className="flex items-center gap-3 ml-4 bg-white p-2 pr-4 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center text-white font-bold">
+            <div className="hidden sm:flex items-center gap-3 bg-white p-2 pr-4 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="w-9 h-9 bg-primary-500 rounded-xl flex items-center justify-center text-white font-bold text-sm">
                 {(user?.email?.[0] ?? 'A').toUpperCase()}
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-800">{user?.email ?? 'Admin'}</p>
+                <p className="text-sm font-bold text-slate-800 max-w-[120px] truncate">{user?.email ?? 'Admin'}</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Super Admin</p>
               </div>
             </div>

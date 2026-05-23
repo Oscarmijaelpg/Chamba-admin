@@ -63,14 +63,14 @@ export default function AuditLogsView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Registro de Actividad</h2>
           <p className="text-slate-500 text-sm mt-1">Auditoría de todas las acciones en la plataforma.</p>
         </div>
         <button
           onClick={refresh}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-xl font-bold hover:bg-primary-600 transition-all"
+          className="sm:ml-auto flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-xl font-bold hover:bg-primary-600 transition-all self-start sm:self-auto"
         >
           <RefreshCw size={18} />
           Actualizar
@@ -78,7 +78,7 @@ export default function AuditLogsView() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-100">
           <p className="text-slate-500 text-xs font-bold uppercase">Total Acciones</p>
           <p className="text-2xl font-bold text-slate-800 mt-1">{stats.total}</p>
@@ -98,7 +98,7 @@ export default function AuditLogsView() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input
@@ -109,27 +109,29 @@ export default function AuditLogsView() {
             className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
           />
         </div>
-        <select
-          value={actionFilter}
-          onChange={(e) => setActionFilter(e.target.value)}
-          className="px-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none font-medium"
-        >
-          <option value="all">Todas las acciones</option>
-          <option value="user">Usuarios</option>
-          <option value="chamba">Chambas</option>
-          <option value="payment">Pagos</option>
-          <option value="report">Reportes</option>
-        </select>
-        <select
-          value={dateRange}
-          onChange={(e) => setDateRange(e.target.value)}
-          className="px-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none font-medium"
-        >
-          <option value="today">Hoy</option>
-          <option value="week">Última semana</option>
-          <option value="month">Último mes</option>
-          <option value="all">Todo el tiempo</option>
-        </select>
+        <div className="flex gap-3">
+          <select
+            value={actionFilter}
+            onChange={(e) => setActionFilter(e.target.value)}
+            className="flex-1 px-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none font-medium text-sm"
+          >
+            <option value="all">Todas las acciones</option>
+            <option value="user">Usuarios</option>
+            <option value="chamba">Chambas</option>
+            <option value="payment">Pagos</option>
+            <option value="report">Reportes</option>
+          </select>
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="flex-1 px-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none font-medium text-sm"
+          >
+            <option value="today">Hoy</option>
+            <option value="week">Última semana</option>
+            <option value="month">Último mes</option>
+            <option value="all">Todo el tiempo</option>
+          </select>
+        </div>
       </div>
 
       {/* Table */}

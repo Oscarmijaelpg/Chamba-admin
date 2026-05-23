@@ -45,13 +45,13 @@ export default function JobsTable() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
         <h2 className="text-2xl font-bold text-slate-800">Gestión de Trabajos</h2>
-        <span className="text-slate-500 text-sm">{filteredJobs.length} trabajos</span>
+        <span className="text-slate-500 text-sm sm:ml-auto">{filteredJobs.length} trabajos</span>
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input

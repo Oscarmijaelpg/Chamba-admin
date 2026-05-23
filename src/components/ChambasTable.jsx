@@ -31,9 +31,9 @@ export default function ChambasTable() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <h2 className="text-2xl font-bold text-slate-800">Moderación de Chambas</h2>
-        <div className="relative w-72">
+        <div className="relative w-full sm:w-72 sm:ml-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input
             type="text"
@@ -51,8 +51,8 @@ export default function ChambasTable() {
         ) : filteredChambas.length === 0 ? (
           <div className="text-center py-20 text-slate-400">No se encontraron chambas</div>
         ) : filteredChambas.map((chamba) => (
-          <div key={chamba.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex gap-6 hover:border-primary-200 transition-all">
-            <div className="w-24 h-24 rounded-xl bg-slate-50 overflow-hidden shrink-0 border border-slate-100">
+          <div key={chamba.id} className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-4 sm:gap-6 hover:border-primary-200 transition-all">
+            <div className="w-full sm:w-24 h-40 sm:h-24 rounded-xl bg-slate-50 overflow-hidden shrink-0 border border-slate-100">
               {chamba.images && chamba.images[0] ? (
                 <img src={chamba.images[0]} alt={chamba.title} className="w-full h-full object-cover" />
               ) : (
@@ -63,13 +63,13 @@ export default function ChambasTable() {
             </div>
             
             <div className="flex-1">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-slate-800 text-lg">{chamba.title}</h3>
+              <div className="flex flex-wrap justify-between items-start gap-2">
+                <div className="min-w-0">
+                  <h3 className="font-bold text-slate-800 text-lg truncate">{chamba.title}</h3>
                   <p className="text-xs text-slate-400 mt-1 uppercase font-bold tracking-wider">Por: {chamba.employer?.full_name}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <select 
+                <div className="flex items-center gap-3 shrink-0">
+                  <select
                     className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border-none focus:ring-0 cursor-pointer ${getStatusColor(chamba.status)}`}
                     value={chamba.status}
                     onChange={(e) => handleStatusChange(chamba.id, e.target.value)}
@@ -79,7 +79,7 @@ export default function ChambasTable() {
                     <option value="completed">Finalizada</option>
                     <option value="cancelled">Cancelada</option>
                   </select>
-                  <p className="text-xl font-black text-primary-600">Bs. {chamba.price_min}</p>
+                  <p className="text-xl font-black text-primary-600 whitespace-nowrap">Bs. {chamba.price_min}</p>
                 </div>
               </div>
               
