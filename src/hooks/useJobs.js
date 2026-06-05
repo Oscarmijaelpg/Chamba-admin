@@ -27,6 +27,15 @@ export function useJobs() {
     await fetchJobs();
   };
 
+  // Actualiza campos arbitrarios del trabajo (edición / aprobación desde el admin).
+  // Devuelve true si tuvo éxito para que la UI pueda cerrar el formulario.
+  const updateJob = async (id, fields) => {
+    const { error } = await supabase.from('jobs').update(fields).eq('id', id);
+    if (error) { setError(error.message); return false; }
+    await fetchJobs();
+    return true;
+  };
+
   const deleteJob = async (id) => {
     const { error } = await supabase.from('jobs').delete().eq('id', id);
     if (error) { setError(error.message); return; }
@@ -35,5 +44,5 @@ export function useJobs() {
 
   useEffect(() => { fetchJobs(); }, []);
 
-  return { jobs, loading, error, fetchJobs, updateStatus, deleteJob };
+  return { jobs, loading, error, fetchJobs, updateStatus, updateJob, deleteJob };
 }

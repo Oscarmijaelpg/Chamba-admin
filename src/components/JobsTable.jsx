@@ -5,11 +5,19 @@ import ConfirmModal from './ConfirmModal';
 import JobDetailModal from './JobDetailModal';
 
 const STATUS_COLOR = {
-  open:   'bg-green-50 text-green-600',
-  closed: 'bg-red-50 text-red-500',
-  draft:  'bg-slate-100 text-slate-500',
+  open:           'bg-green-50 text-green-600',
+  active:         'bg-green-50 text-green-600',
+  closed:         'bg-red-50 text-red-500',
+  expired:        'bg-slate-100 text-slate-500',
+  rejected:       'bg-red-50 text-red-500',
+  pending:        'bg-amber-50 text-amber-600',
+  pending_review: 'bg-amber-50 text-amber-600',
+  draft:          'bg-slate-100 text-slate-500',
 };
-const STATUS_LABEL = { open: 'Abierto', closed: 'Cerrado', draft: 'Borrador' };
+const STATUS_LABEL = {
+  open: 'Abierto', active: 'Activo', closed: 'Cerrado', expired: 'Expirado',
+  rejected: 'Rechazado', pending: 'Pendiente', pending_review: 'En revisión', draft: 'Borrador',
+};
 
 function StatusBadge({ status }) {
   return (
@@ -51,7 +59,7 @@ const Kpi = ({ title, value, icon: Icon, color, sub }) => (
 );
 
 export default function JobsTable() {
-  const { jobs, loading, updateStatus, deleteJob } = useJobs();
+  const { jobs, loading, updateJob, deleteJob } = useJobs();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatus]   = useState('all');
   const [cityFilter, setCity]       = useState('all');
@@ -95,9 +103,6 @@ export default function JobsTable() {
     setActionLoading(false);
     closeConfirm();
   };
-
-  const toggleStatus = (job) =>
-    updateStatus(job.id, job.status === 'open' ? 'closed' : 'open');
 
   return (
     <div className="space-y-5">
@@ -144,8 +149,12 @@ export default function JobsTable() {
           >
             <option value="all">Todos los estados</option>
             <option value="open">Abiertos</option>
+            <option value="active">Activos</option>
+            <option value="rejected">Rechazados</option>
+            <option value="pending_review">En revisión</option>
+            <option value="pending">Pendientes</option>
             <option value="closed">Cerrados</option>
-            <option value="draft">Borrador</option>
+            <option value="expired">Expirados</option>
           </select>
           <select
             className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-0"
@@ -243,7 +252,7 @@ export default function JobsTable() {
         <JobDetailModal
           job={selectedJob}
           onClose={() => setSelectedJob(null)}
-          onToggleStatus={(job) => { toggleStatus(job); setSelectedJob(null); }}
+          onUpdate={updateJob}
           onDelete={(id) => { openDeleteConfirm(id); setSelectedJob(null); }}
         />
       )}
