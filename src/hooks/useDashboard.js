@@ -42,7 +42,7 @@ export function useDashboard(user) {
         supabase.from('app_config').select('value').eq('id', 'global_settings').single(),
         supabase.from('wallet_transactions').select('*, users(full_name)').eq('status', 'pending').order('created_at', { ascending: false }),
         supabase.from('chambas').select('created_at').order('created_at', { ascending: false }).limit(1),
-        supabase.from('users').select('created_at, is_verified').order('created_at', { ascending: false }).limit(1),
+        supabase.from('users').select('created_at').order('created_at', { ascending: false }).limit(1),
         supabase.from('wallet_transactions').select('type, created_at').in('type', ['deposit', 'withdrawal']).order('created_at', { ascending: false }).limit(1),
         supabase.from('audit_logs').select('user_id').gte('created_at', since30d.toISOString()),
       ]);
@@ -57,7 +57,7 @@ export function useDashboard(user) {
 
       const activities = [];
       if (recentChambas?.length) activities.push({ id: 1, text: 'Nueva chamba publicada', time: relTime(recentChambas[0].created_at), icon: 'briefcase' });
-      if (recentUsers?.length) activities.push({ id: 2, text: recentUsers[0].is_verified ? 'Usuario verificado' : 'Nuevo usuario registrado', time: relTime(recentUsers[0].created_at), icon: 'user' });
+      if (recentUsers?.length) activities.push({ id: 2, text: 'Nuevo usuario registrado', time: relTime(recentUsers[0].created_at), icon: 'user' });
       if (recentTxActivity?.length) activities.push({ id: 3, text: recentTxActivity[0].type === 'deposit' ? 'Depósito recibido' : 'Retiro procesado', time: relTime(recentTxActivity[0].created_at), icon: 'wallet' });
 
       setRecentActivity(activities.slice(0, 5));

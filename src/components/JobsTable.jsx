@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, MapPin, Building2, User, Calendar, Briefcase, ChevronRight } from 'lucide-react';
+import { Search, MapPin, Building2, User, Calendar, Briefcase, ChevronRight, Globe, Home } from 'lucide-react';
 import { useJobs } from '../hooks/useJobs';
 import ConfirmModal from './ConfirmModal';
 import JobDetailModal from './JobDetailModal';
@@ -19,11 +19,43 @@ function StatusBadge({ status }) {
   );
 }
 
+// Distingue ofertas scrapeadas de sitios externos vs. publicadas dentro de la app.
+function SourceBadge({ job }) {
+  if (job.is_external) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 whitespace-nowrap">
+        <Globe size={11} /> Externo{job.source ? ` · ${job.source}` : ''}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-600 whitespace-nowrap">
+      <Home size={11} /> Propio
+    </span>
+  );
+}
+
+const Kpi = ({ title, value, icon: Icon, color, sub }) => (
+  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+    <div className="flex justify-between items-start gap-2">
+      <div className="min-w-0">
+        <p className="text-slate-500 text-xs font-medium leading-tight">{title}</p>
+        <h3 className="text-xl sm:text-2xl font-bold mt-1.5 text-slate-800 truncate">{value}</h3>
+        {sub && <p className="text-[10px] text-slate-400 mt-0.5 truncate">{sub}</p>}
+      </div>
+      <div className={`p-2.5 rounded-xl shrink-0 ${color}`}>
+        <Icon size={18} className="text-white" />
+      </div>
+    </div>
+  </div>
+);
+
 export default function JobsTable() {
   const { jobs, loading, updateStatus, deleteJob } = useJobs();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatus]   = useState('all');
   const [cityFilter, setCity]       = useState('all');
+  const [sourceFilter, setSource]   = useState('all');
   const [selectedJob, setSelectedJob] = useState(null);
   const [confirm, setConfirm]         = useState({ open: false, id: null });
   const [actionLoading, setActionLoading] = useState(false);
@@ -31,6 +63,13 @@ export default function JobsTable() {
   const cities = useMemo(() => {
     const set = new Set(jobs.map(j => j.city).filter(Boolean));
     return Array.from(set).sort();
+  }, [jobs]);
+
+  const metrics = useMemo(() => {
+    const total = jobs.length;
+    const external = jobs.filter(j => j.is_external).length;
+    const own = total - external;
+    return { total, external, own, externalPct: total ? Math.round((external / total) * 100) : 0 };
   }, [jobs]);
 
   const filtered = useMemo(() => jobs.filter(job => {
@@ -41,8 +80,10 @@ export default function JobsTable() {
       job.employer?.full_name?.toLowerCase().includes(q);
     const matchStatus = statusFilter === 'all' || job.status === statusFilter;
     const matchCity   = cityFilter === 'all'   || job.city === cityFilter;
-    return matchSearch && matchStatus && matchCity;
-  }), [jobs, searchTerm, statusFilter, cityFilter]);
+    const matchSource = sourceFilter === 'all'
+      || (sourceFilter === 'external' ? !!job.is_external : !job.is_external);
+    return matchSearch && matchStatus && matchCity && matchSource;
+  }), [jobs, searchTerm, statusFilter, cityFilter, sourceFilter]);
 
   const openDeleteConfirm = (id) => setConfirm({ open: true, id });
   const closeConfirm = () => setConfirm({ open: false, id: null });
@@ -66,6 +107,14 @@ export default function JobsTable() {
         <p className="text-slate-400 text-sm mt-0.5">{filtered.length} de {jobs.length} trabajos</p>
       </div>
 
+      {/* Métricas: externos vs propios */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Kpi title="Total trabajos" value={metrics.total} icon={Briefcase} color="bg-primary-600" />
+        <Kpi title="Externos (scraper)" value={metrics.external} icon={Globe} color="bg-blue-500" sub={`${metrics.externalPct}% del total`} />
+        <Kpi title="Propios (app)" value={metrics.own} icon={Home} color="bg-emerald-500" sub={`${100 - metrics.externalPct}% del total`} />
+        <Kpi title="Mostrando" value={filtered.length} icon={Search} color="bg-amber-500" sub="con filtros actuales" />
+      </div>
+
       {/* Filtros */}
       <div className="flex flex-col gap-3">
         <div className="relative">
@@ -78,7 +127,16 @@ export default function JobsTable() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <select
+            className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-0"
+            value={sourceFilter}
+            onChange={(e) => setSource(e.target.value)}
+          >
+            <option value="all">Todos los orígenes</option>
+            <option value="external">Externos (scraper)</option>
+            <option value="own">Propios (app)</option>
+          </select>
           <select
             className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-0"
             value={statusFilter}
@@ -131,6 +189,7 @@ export default function JobsTable() {
                   <tr className="bg-slate-50/70 text-slate-400 text-[11px] uppercase tracking-widest font-bold">
                     <th className="px-5 py-3.5">Trabajo</th>
                     <th className="px-5 py-3.5">Empresa / Empleador</th>
+                    <th className="px-5 py-3.5">Origen</th>
                     <th className="px-5 py-3.5">Ciudad</th>
                     <th className="px-5 py-3.5">Estado</th>
                     <th className="px-5 py-3.5">Fecha</th>
@@ -151,6 +210,9 @@ export default function JobsTable() {
                       <td className="px-5 py-3.5">
                         <p className="text-sm text-slate-700 font-medium truncate">{job.company || '-'}</p>
                         <p className="text-xs text-slate-400 truncate">{job.employer?.full_name || '-'}</p>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <SourceBadge job={job} />
                       </td>
                       <td className="px-5 py-3.5">
                         <span className="flex items-center gap-1 text-sm text-slate-500">
@@ -225,6 +287,7 @@ function JobCard({ job, onOpen }) {
 
       {/* Chips */}
       <div className="flex flex-wrap gap-2">
+        <SourceBadge job={job} />
         {job.company && (
           <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
             <Building2 size={10} /> {job.company}

@@ -28,6 +28,7 @@ import AuditLogsView from './components/AuditLogsView';
 import PricingView from './components/PricingView';
 import JobsTable from './components/JobsTable';
 import AnalyticsCharts from './components/AnalyticsCharts';
+import ProjectAnalytics from './components/ProjectAnalytics';
 import AlertsConfig from './components/AlertsConfig';
 import DarkModeToggle from './components/DarkModeToggle';
 import { useAuth } from './hooks/useAuth';
@@ -171,12 +172,17 @@ export default function App() {
           <Route path="/reports" element={<ReportsView />} />
           <Route path="/audit" element={<AuditLogsView />} />
           <Route path="/analytics" element={
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div>
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">Analytics Avanzado</h2>
-                <p className="text-slate-500">Tendencias, distribución de eventos, y métricas clave</p>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">Analytics del Proyecto</h2>
+                <p className="text-slate-500">Recurrencia, embudo de conversión, postulaciones y salud del scraper</p>
               </div>
-              <AnalyticsCharts />
+              <ProjectAnalytics />
+              <div className="pt-2">
+                <h3 className="text-lg font-bold text-slate-800 mb-1">Eventos y tendencias</h3>
+                <p className="text-sm text-slate-500 mb-4">Distribución de eventos e ingresos (datos crudos)</p>
+                <AnalyticsCharts />
+              </div>
             </div>
           } />
           <Route path="/alerts" element={
