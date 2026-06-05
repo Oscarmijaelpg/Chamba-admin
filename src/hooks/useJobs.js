@@ -11,7 +11,10 @@ export function useJobs() {
     setError(null);
     const { data, error } = await supabase
       .from('jobs')
-      .select('*, employer:users(full_name, email)')
+      // Desambiguar la relación: existe más de una FK jobs↔users (la directa y la
+      // de job_alerts_sent), así que hay que nombrar la constraint explícitamente
+      // o PostgREST falla con PGRST201 y no devuelve ningún trabajo.
+      .select('*, employer:users!jobs_user_id_fkey(full_name, email)')
       .order('created_at', { ascending: false });
     if (error) setError(error.message);
     else setJobs(data || []);
