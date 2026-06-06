@@ -190,3 +190,17 @@ $function$;
 REVOKE ALL  ON FUNCTION public.admin_delete_user(uuid) FROM PUBLIC;
 REVOKE ALL  ON FUNCTION public.admin_delete_user(uuid) FROM anon;
 GRANT EXECUTE ON FUNCTION public.admin_delete_user(uuid) TO authenticated;
+
+-- 3) FKs que referencian auth.users (NO public.users) y bloqueaban el borrado del login.
+--    Estas tablas apuntan directamente a auth.users, por eso no se ven afectadas por el
+--    cascade de public.users; sin una regla de borrado fallaban en `DELETE FROM auth.users`.
+--      - user_plans     (suscripción/estado del usuario)  -> CASCADE  (se borra con el usuario)
+--      - plan_purchases (registro de ingreso/compra)        -> SET NULL (preserva el monto,
+--        anonimizado, igual que payments)
+ALTER TABLE public.user_plans     DROP CONSTRAINT user_plans_user_id_fkey;
+ALTER TABLE public.user_plans     ADD  CONSTRAINT user_plans_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+ALTER TABLE public.plan_purchases DROP CONSTRAINT plan_purchases_user_id_fkey;
+ALTER TABLE public.plan_purchases ADD  CONSTRAINT plan_purchases_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
