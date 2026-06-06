@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-const EXPO_URL = 'https://exp.host/--/api/v2/push/send';
-const CHUNK_SIZE = 100;
+const EXPO_SEND_URL = 'https://exp.host/--/api/v2/push/send';
+const EXPO_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts';
+const CHUNK_SIZE = 100; // límite de mensajes por request de Expo
 
 function chunk(arr, size) {
   const chunks = [];
@@ -10,9 +11,21 @@ function chunk(arr, size) {
   return chunks;
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Destinatarios notificables: con token, NO baneados y NO eliminados.
+// `not('is_banned','is',true)` incluye is_banned = false y NULL (equivale a
+// COALESCE(is_banned,false)=false, igual que las RPCs del scraper).
+function applyNotifiableFilters(query) {
+  return query
+    .not('push_token', 'is', null)
+    .not('is_banned', 'is', true)
+    .is('deleted_at', null);
+}
+
 export function useNotifications() {
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState(null); // { sent, failed }
+  const [result, setResult] = useState(null); // { sent, failed, cleaned }
   const [error, setError] = useState(null);
 
   const sendToAll = async (title, body, data = {}) => {
@@ -21,60 +34,117 @@ export function useNotifications() {
     setError(null);
 
     try {
-      const { data: users, error: dbError } = await supabase
-        .from('users')
-        .select('id, push_token')
-        .not('push_token', 'is', null);
-
+      const { data: users, error: dbError } = await applyNotifiableFilters(
+        supabase.from('users').select('id, push_token'),
+      );
       if (dbError) throw new Error(dbError.message);
 
-      const tokens = users.map(u => u.push_token).filter(Boolean);
-      if (tokens.length === 0) {
-        setResult({ sent: 0, failed: 0 });
-        return { sent: 0, failed: 0 };
+      const recipients = (users ?? []).filter((u) => u.push_token);
+      if (recipients.length === 0) {
+        const empty = { sent: 0, failed: 0, cleaned: 0 };
+        setResult(empty);
+        return empty;
       }
 
-      const chunks = chunk(tokens, CHUNK_SIZE);
       let sent = 0;
       let failed = 0;
+      const deadUserIds = new Set(); // tokens muertos → limpiar push_token
+      const receiptMap = new Map(); // ticketId -> userId (para getReceipts)
 
-      for (const batch of chunks) {
-        const messages = batch.map(token => ({
-          to: token,
+      for (const batch of chunk(recipients, CHUNK_SIZE)) {
+        const messages = batch.map((u) => ({
+          to: u.push_token,
           title,
           body,
           data,
           sound: 'default',
         }));
 
-        const res = await fetch(EXPO_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify(messages),
-        });
+        let json;
+        try {
+          const res = await fetch(EXPO_SEND_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(messages),
+          });
+          // Si el lote entero falla (rate-limit 429, error de red/servidor), todos
+          // sus destinatarios cuentan como fallidos en vez de perderse en silencio.
+          if (!res.ok) {
+            failed += batch.length;
+            continue;
+          }
+          json = await res.json();
+        } catch {
+          failed += batch.length;
+          continue;
+        }
 
-        const json = await res.json();
-        const results = json.data ?? [];
-        results.forEach(r => {
-          if (r.status === 'ok') sent++;
-          else failed++;
+        const tickets = json?.data ?? [];
+        batch.forEach((u, i) => {
+          const ticket = tickets[i];
+          if (ticket?.status === 'ok') {
+            sent++;
+            if (ticket.id) receiptMap.set(ticket.id, u.id);
+          } else {
+            failed++;
+            // Token inválido detectado ya en el envío → marcar para limpiar.
+            if (ticket?.details?.error === 'DeviceNotRegistered') deadUserIds.add(u.id);
+          }
         });
       }
 
-      // Intentar loguear (ignorar si la tabla no existe)
-      try {
-        await supabase.from('notification_logs').insert({
-          title,
-          body,
-          sent_count: sent,
-          failed_count: failed,
-          sent_at: new Date().toISOString(),
-        });
-      } catch (_) {
-        // tabla no existe aún — no es crítico
+      // Receipts: Expo confirma la entrega real de forma diferida. Esperamos un poco y
+      // consultamos para detectar tokens muertos (DeviceNotRegistered) que el envío
+      // aceptó pero no se entregaron. Best-effort: lo que no esté listo se limpiará en
+      // un próximo envío; si esta consulta falla, no afecta el resultado del envío.
+      const ticketIds = [...receiptMap.keys()];
+      if (ticketIds.length > 0) {
+        try {
+          await sleep(4000);
+          for (const ids of chunk(ticketIds, 1000)) {
+            const res = await fetch(EXPO_RECEIPTS_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({ ids }),
+            });
+            if (!res.ok) continue;
+            const json = await res.json();
+            const receipts = json?.data ?? {};
+            for (const [ticketId, receipt] of Object.entries(receipts)) {
+              if (receipt?.status === 'error' && receipt?.details?.error === 'DeviceNotRegistered') {
+                const userId = receiptMap.get(ticketId);
+                if (userId) deadUserIds.add(userId);
+              }
+            }
+          }
+        } catch {
+          /* receipts best-effort */
+        }
       }
 
-      const outcome = { sent, failed };
+      // Limpiar tokens muertos (app desinstalada / token revocado): liberan ruido en
+      // próximos envíos y dejan de contar como "fallidos".
+      let cleaned = 0;
+      if (deadUserIds.size > 0) {
+        const ids = [...deadUserIds];
+        const { error: cleanErr } = await supabase
+          .from('users')
+          .update({ push_token: null })
+          .in('id', ids);
+        if (!cleanErr) cleaned = ids.length;
+      }
+
+      // Registrar el broadcast con el esquema real de notification_logs (data es JSONB).
+      // user_id queda null porque es un envío masivo, no a un usuario puntual.
+      const { error: logErr } = await supabase.from('notification_logs').insert({
+        title,
+        body,
+        data: { audience: 'broadcast', recipients: recipients.length, sent, failed, cleaned },
+        status: failed === 0 ? 'sent' : 'partial',
+      });
+      if (logErr) console.warn('notification_logs insert falló:', logErr.message);
+
+      const outcome = { sent, failed, cleaned };
       setResult(outcome);
       return outcome;
     } catch (e) {
@@ -87,10 +157,9 @@ export function useNotifications() {
   };
 
   const getTokenCount = async () => {
-    const { count } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .not('push_token', 'is', null);
+    const { count } = await applyNotifiableFilters(
+      supabase.from('users').select('id', { count: 'exact', head: true }),
+    );
     return count ?? 0;
   };
 

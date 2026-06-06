@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Mail, AlertTriangle, Save, Check, Send, CheckCircle, XCircle } from 'lucide-react';
+import { Bell, Mail, AlertTriangle, Save, Check, Send, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import ConfirmModal from './ConfirmModal';
 
@@ -193,6 +193,11 @@ export default function AlertsConfig() {
             {result.failed > 0 && (
               <span className="flex items-center gap-1.5 text-sm font-bold text-red-500">
                 <XCircle size={16} /> {result.failed} fallidas
+              </span>
+            )}
+            {result.cleaned > 0 && (
+              <span className="flex items-center gap-1.5 text-sm font-bold text-slate-500">
+                <Trash2 size={16} /> {result.cleaned} inactivos limpiados
               </span>
             )}
           </div>

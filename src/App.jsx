@@ -48,7 +48,7 @@ const NAV_ITEMS = [
 ];
 
 export default function App() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, isAdmin, loading: authLoading, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (authLoading) {
@@ -61,6 +61,33 @@ export default function App() {
 
   if (!user) {
     return <LoginView />;
+  }
+
+  // Solo administradores (public.users.is_admin = true) acceden al panel.
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 max-w-sm w-full text-center space-y-4">
+          <div className="w-12 h-12 mx-auto rounded-xl bg-red-50 flex items-center justify-center">
+            <Shield size={24} className="text-red-500" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Acceso restringido</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              La cuenta <span className="font-medium">{user?.email}</span> no tiene permisos de
+              administrador.
+            </p>
+          </div>
+          <button
+            onClick={signOut}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-red-500 hover:bg-red-50 transition-all"
+          >
+            <LogOut size={18} />
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const closeSidebar = () => setSidebarOpen(false);
