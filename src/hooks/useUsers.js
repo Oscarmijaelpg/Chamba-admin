@@ -28,5 +28,13 @@ export function useUsers() {
     return error;
   };
 
-  return { users, loading, setBanned };
+  // Eliminación permanente: borra el perfil (cascada) y el login en auth.users.
+  // Implementada en Postgres como RPC `admin_delete_user` (SECURITY DEFINER, solo admins).
+  const deleteUser = async (userId) => {
+    const { error } = await supabase.rpc('admin_delete_user', { target_id: userId });
+    if (!error) fetchUsers();
+    return error;
+  };
+
+  return { users, loading, setBanned, deleteUser };
 }

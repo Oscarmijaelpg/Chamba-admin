@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useUsers } from '../hooks/useUsers';
-import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users } from 'lucide-react';
+import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import UserDetailModal from './UserDetailModal';
 
 export default function UsersTable() {
-  const { users, loading, setBanned } = useUsers();
+  const { users, loading, setBanned, deleteUser } = useUsers();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [confirmState, setConfirmState] = useState({ open: false, user: null, action: null });
@@ -19,20 +19,48 @@ export default function UsersTable() {
 
   const openBanConfirm = (user) => setConfirmState({ open: true, user, action: 'ban' });
   const openUnbanConfirm = (user) => setConfirmState({ open: true, user, action: 'unban' });
+  const openDeleteConfirm = (user) => setConfirmState({ open: true, user, action: 'delete' });
   const closeConfirm = () => setConfirmState({ open: false, user: null, action: null });
 
   const handleConfirm = async () => {
     const { user, action } = confirmState;
     setActionLoading(true);
-    const error = await setBanned(user.id, action === 'ban');
+    const error = action === 'delete'
+      ? await deleteUser(user.id)
+      : await setBanned(user.id, action === 'ban');
     setActionLoading(false);
     closeConfirm();
     if (error) {
-      showToast('Error al actualizar el usuario', 'error');
+      const fallback = action === 'delete' ? 'Error al eliminar el usuario' : 'Error al actualizar el usuario';
+      showToast(error.message || fallback, 'error');
+    } else if (action === 'delete') {
+      showToast(`${user.full_name} fue eliminado permanentemente`);
     } else {
       showToast(action === 'ban' ? `${user.full_name} fue baneado` : `Ban removido a ${user.full_name}`);
     }
   };
+
+  // Configuración del modal de confirmación según la acción
+  const confirmConfig = {
+    ban: {
+      title: `Banear a ${confirmState.user?.full_name}`,
+      message: 'El usuario no podrá iniciar sesión en la app. Podrás revertir esta acción en cualquier momento.',
+      confirmLabel: 'Sí, banear',
+      confirmClass: 'bg-red-500 hover:bg-red-600 text-white',
+    },
+    unban: {
+      title: `Quitar ban a ${confirmState.user?.full_name}`,
+      message: 'El usuario recuperará acceso completo a la aplicación.',
+      confirmLabel: 'Sí, quitar ban',
+      confirmClass: 'bg-green-500 hover:bg-green-600 text-white',
+    },
+    delete: {
+      title: `Eliminar a ${confirmState.user?.full_name}`,
+      message: 'Acción permanente e irreversible. Se borrarán su cuenta y acceso, junto con sus chambas, postulaciones, billetera y mensajes. No podrás deshacerlo.',
+      confirmLabel: 'Sí, eliminar',
+      confirmClass: 'bg-red-600 hover:bg-red-700 text-white',
+    },
+  }[confirmState.action] || {};
 
   const filteredUsers = users.filter(u =>
     u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -92,6 +120,7 @@ export default function UsersTable() {
                 onView={() => setSelectedUser(user)}
                 onBan={() => openBanConfirm(user)}
                 onUnban={() => openUnbanConfirm(user)}
+                onDelete={() => openDeleteConfirm(user)}
               />
             ))}
           </div>
@@ -161,6 +190,15 @@ export default function UsersTable() {
                               </button>
                             )
                           )}
+                          {!user.is_admin && (
+                            <button
+                              onClick={() => openDeleteConfirm(user)}
+                              title="Eliminar usuario"
+                              className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-all"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                           <button
                             onClick={() => setSelectedUser(user)}
                             title="Ver detalle"
@@ -186,6 +224,7 @@ export default function UsersTable() {
           onClose={() => setSelectedUser(null)}
           onBan={(u) => { setSelectedUser(null); openBanConfirm(u); }}
           onUnban={(u) => { setSelectedUser(null); openUnbanConfirm(u); }}
+          onDelete={(u) => { setSelectedUser(null); openDeleteConfirm(u); }}
         />
       )}
 
@@ -195,14 +234,10 @@ export default function UsersTable() {
         onClose={closeConfirm}
         onConfirm={handleConfirm}
         loading={actionLoading}
-        title={confirmState.action === 'ban' ? `Banear a ${confirmState.user?.full_name}` : `Quitar ban a ${confirmState.user?.full_name}`}
-        message={
-          confirmState.action === 'ban'
-            ? 'El usuario no podrá iniciar sesión en la app. Podrás revertir esta acción en cualquier momento.'
-            : 'El usuario recuperará acceso completo a la aplicación.'
-        }
-        confirmLabel={confirmState.action === 'ban' ? 'Sí, banear' : 'Sí, quitar ban'}
-        confirmClass={confirmState.action === 'ban' ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmLabel={confirmConfig.confirmLabel}
+        confirmClass={confirmConfig.confirmClass}
       />
     </div>
   );
@@ -210,7 +245,7 @@ export default function UsersTable() {
 
 /* ─── Subcomponentes ─── */
 
-function UserCard({ user, onView, onBan, onUnban }) {
+function UserCard({ user, onView, onBan, onUnban, onDelete }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
       {/* Fila principal */}
@@ -256,21 +291,30 @@ function UserCard({ user, onView, onBan, onUnban }) {
       <div className="flex items-center justify-between pt-1 border-t border-slate-50">
         <StatusBadges user={user} />
         {!user.is_admin && (
-          user.is_banned ? (
+          <div className="flex items-center gap-2">
+            {user.is_banned ? (
+              <button
+                onClick={onUnban}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-xl text-xs font-bold transition-all"
+              >
+                <ShieldCheck size={13} /> Quitar ban
+              </button>
+            ) : (
+              <button
+                onClick={onBan}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl text-xs font-bold transition-all"
+              >
+                <ShieldAlert size={13} /> Banear
+              </button>
+            )}
             <button
-              onClick={onUnban}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-xl text-xs font-bold transition-all"
+              onClick={onDelete}
+              title="Eliminar usuario"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-xl text-xs font-bold transition-all"
             >
-              <ShieldCheck size={13} /> Quitar ban
+              <Trash2 size={13} /> Eliminar
             </button>
-          ) : (
-            <button
-              onClick={onBan}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl text-xs font-bold transition-all"
-            >
-              <ShieldAlert size={13} /> Banear
-            </button>
-          )
+          </div>
         )}
       </div>
     </div>

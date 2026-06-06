@@ -1,10 +1,10 @@
 import React from 'react';
 import {
   X, Shield, ShieldAlert, ShieldCheck, MapPin,
-  Star, Briefcase, Wallet, Calendar, Mail, User
+  Star, Briefcase, Wallet, Calendar, Mail, User, Trash2
 } from 'lucide-react';
 
-export default function UserDetailModal({ user, onClose, onBan, onUnban }) {
+export default function UserDetailModal({ user, onClose, onBan, onUnban, onDelete }) {
   if (!user) return null;
 
   const joinedDate = user.created_at
@@ -77,7 +77,7 @@ export default function UserDetailModal({ user, onClose, onBan, onUnban }) {
 
         {/* Footer acciones */}
         {!user.is_admin && (
-          <div className="p-5 border-t border-slate-100">
+          <div className="p-5 border-t border-slate-100 space-y-2.5">
             {user.is_banned ? (
               <button
                 onClick={() => { onUnban(user); onClose(); }}
@@ -93,6 +93,15 @@ export default function UserDetailModal({ user, onClose, onBan, onUnban }) {
               >
                 <ShieldAlert size={18} />
                 Banear usuario
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={() => { onDelete(user); onClose(); }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-xl font-bold transition-all"
+              >
+                <Trash2 size={18} />
+                Eliminar permanentemente
               </button>
             )}
           </div>
