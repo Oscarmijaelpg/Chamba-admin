@@ -1,55 +1,62 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-// Carga el flag is_admin desde public.users para el usuario autenticado.
-async function fetchIsAdmin(authUser) {
-  if (!authUser) return false;
-  const { data, error } = await supabase
-    .from('users')
-    .select('is_admin')
-    .eq('id', authUser.id)
-    .single();
-  if (error) return false;
-  return data?.is_admin === true;
-}
-
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // resolviendo la sesión
+  const [adminChecked, setAdminChecked] = useState(false); // resuelto el check de is_admin
 
+  // 1) Sesión. El callback de onAuthStateChange DEBE ser síncrono: hacer await/llamadas
+  //    al SDK aquí dentro deadlockea el cliente de auth de Supabase (se ve como pantalla
+  //    colgada solo cuando hay sesión persistida). Por eso solo seteamos el user.
   useEffect(() => {
-    let active = true;
-
-    supabase.auth
-      .getUser()
-      .then(async ({ data: { user } }) => {
-        if (!active) return;
-        const admin = await fetchIsAdmin(user);
-        if (!active) return;
-        setUser(user);
-        setIsAdmin(admin);
-        setLoading(false);
-      })
-      .catch(() => active && setLoading(false));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const authUser = session?.user ?? null;
-      const admin = await fetchIsAdmin(authUser);
-      if (!active) return;
-      setUser(authUser);
-      setIsAdmin(admin);
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
     });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // 2) is_admin se consulta en un efecto separado (fuera del callback de auth) para no
+  //    bloquear el cliente. Reacciona al cambio de usuario.
+  useEffect(() => {
+    let active = true;
+
+    if (!user) {
+      setIsAdmin(false);
+      setAdminChecked(true);
+      return;
+    }
+
+    setAdminChecked(false);
+    supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+      .then(({ data, error }) => {
+        if (!active) return;
+        setIsAdmin(!error && data?.is_admin === true);
+        setAdminChecked(true);
+      });
 
     return () => {
       active = false;
-      subscription.unsubscribe();
     };
-  }, []);
+  }, [user?.id]);
 
   const signOut = () => supabase.auth.signOut();
 
-  return { user, isAdmin, loading, signOut };
+  // `loading` cubre hasta tener sesión y, si hay usuario, el resultado del check de admin
+  // (evita un parpadeo de "Acceso restringido" mientras se consulta).
+  return { user, isAdmin, loading: loading || (!!user && !adminChecked), signOut };
 }

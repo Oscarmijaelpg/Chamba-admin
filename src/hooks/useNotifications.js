@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-const EXPO_SEND_URL = 'https://exp.host/--/api/v2/push/send';
-const EXPO_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts';
+// Proxy serverless propio (api/expo.js): el navegador no puede llamar a Expo directo por
+// falta de CORS. El proxy corre en el servidor (mismo origen) y reenvía a Expo.
+const EXPO_SEND_URL = '/api/expo?action=send';
+const EXPO_RECEIPTS_URL = '/api/expo?action=receipts';
 const CHUNK_SIZE = 100; // límite de mensajes por request de Expo
 
 function chunk(arr, size) {
