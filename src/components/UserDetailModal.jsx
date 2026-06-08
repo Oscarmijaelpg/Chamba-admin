@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   X, Shield, ShieldAlert, ShieldCheck, MapPin,
-  Star, Briefcase, Wallet, Calendar, Mail, User, Trash2
+  Star, Briefcase, Wallet, Calendar, Mail, User, Trash2, Cake
 } from 'lucide-react';
 
 export default function UserDetailModal({ user, onClose, onBan, onUnban, onDelete }) {
@@ -68,6 +68,7 @@ export default function UserDetailModal({ user, onClose, onBan, onUnban, onDelet
           <div className="grid grid-cols-2 gap-3">
             <InfoCard icon={<Mail size={14} />} label="Email" value={user.email} full />
             <InfoCard icon={<MapPin size={14} />} label="Ciudad" value={user.city || 'No especificada'} />
+            <InfoCard icon={<Cake size={14} />} label="Edad" value={user.age ? `${user.age} años` : 'No especificada'} />
             <InfoCard icon={<Wallet size={14} />} label="Saldo" value={`Bs. ${user.wallet_balance || 0}`} />
             <InfoCard icon={<Star size={14} />} label="Rating" value={`${user.rating?.toFixed(1) || '0.0'} ★`} />
             <InfoCard icon={<Briefcase size={14} />} label="Trabajos" value={user.jobs_completed || 0} />

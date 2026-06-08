@@ -30,6 +30,7 @@ import JobsTable from './components/JobsTable';
 import AnalyticsCharts from './components/AnalyticsCharts';
 import ProjectAnalytics from './components/ProjectAnalytics';
 import AlertsConfig from './components/AlertsConfig';
+import AgeAnalytics from './components/AgeAnalytics';
 import DarkModeToggle from './components/DarkModeToggle';
 import { useAuth } from './hooks/useAuth';
 
@@ -205,6 +206,7 @@ export default function App() {
                 <p className="text-slate-500">Recurrencia, embudo de conversión, postulaciones y salud del scraper</p>
               </div>
               <ProjectAnalytics />
+              <AgeAnalytics />
               <div className="pt-2">
                 <h3 className="text-lg font-bold text-slate-800 mb-1">Eventos y tendencias</h3>
                 <p className="text-sm text-slate-500 mb-4">Distribución de eventos e ingresos (datos crudos)</p>

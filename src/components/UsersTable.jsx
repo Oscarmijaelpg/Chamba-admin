@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useUsers } from '../hooks/useUsers';
-import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2 } from 'lucide-react';
+import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2, Cake } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import UserDetailModal from './UserDetailModal';
 
@@ -133,6 +133,7 @@ export default function UsersTable() {
                   <tr className="bg-slate-50 text-slate-400 text-[11px] uppercase tracking-widest font-bold">
                     <th className="px-5 py-3.5">Usuario</th>
                     <th className="px-5 py-3.5">Tipo</th>
+                    <th className="px-5 py-3.5">Edad</th>
                     <th className="px-5 py-3.5">Ciudad</th>
                     <th className="px-5 py-3.5">Saldo</th>
                     <th className="px-5 py-3.5">Rating</th>
@@ -155,6 +156,7 @@ export default function UsersTable() {
                       <td className="px-5 py-3.5">
                         <TypeBadge type={user.user_type} />
                       </td>
+                      <td className="px-5 py-3.5 text-sm text-slate-500">{user.age ? `${user.age}` : '-'}</td>
                       <td className="px-5 py-3.5 text-sm text-slate-500">{user.city || '-'}</td>
                       <td className="px-5 py-3.5 font-semibold text-slate-800 text-sm whitespace-nowrap">
                         Bs. {user.wallet_balance || 0}
@@ -276,6 +278,11 @@ function UserCard({ user, onView, onBan, onUnban, onDelete }) {
         {user.city && (
           <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
             <MapPin size={10} /> {user.city}
+          </span>
+        )}
+        {user.age != null && (
+          <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
+            <Cake size={10} /> {user.age} años
           </span>
         )}
         <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
