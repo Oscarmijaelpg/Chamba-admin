@@ -251,3 +251,31 @@ END $$;
 REVOKE ALL  ON FUNCTION public.admin_dashboard_stats() FROM PUBLIC;
 REVOKE ALL  ON FUNCTION public.admin_dashboard_stats() FROM anon;
 GRANT EXECUTE ON FUNCTION public.admin_dashboard_stats() TO authenticated;
+
+-- 9) Conteo de un evento por día (genérico). Se usa para "Vistas de empleos por día"
+--    (p_event='view_job'); reemplaza al gráfico de postulaciones cuando aún no hay.
+CREATE OR REPLACE FUNCTION public.admin_event_trend(p_event text, p_days int DEFAULT 30)
+ RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $$
+DECLARE res jsonb;
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'No autorizado'; END IF;
+  WITH d AS (
+    SELECT generate_series((now() - (p_days - 1) * interval '1 day')::date, now()::date, interval '1 day')::date AS day
+  ),
+  e AS (
+    SELECT created_at::date AS day, count(*) AS c FROM analytics_events
+    WHERE event_name = p_event AND created_at >= (now() - (p_days - 1) * interval '1 day')::date
+    GROUP BY 1
+  )
+  SELECT jsonb_build_object(
+    'total',  (SELECT coalesce(sum(c), 0) FROM e),
+    'series', (SELECT jsonb_agg(jsonb_build_object('d', to_char(d.day, 'YYYY-MM-DD'), 'count', coalesce(e.c, 0)) ORDER BY d.day)
+               FROM d LEFT JOIN e ON e.day = d.day)
+  ) INTO res;
+  RETURN res;
+END $$;
+
+REVOKE ALL  ON FUNCTION public.admin_event_trend(text, int) FROM PUBLIC;
+REVOKE ALL  ON FUNCTION public.admin_event_trend(text, int) FROM anon;
+GRANT EXECUTE ON FUNCTION public.admin_event_trend(text, int) TO authenticated;

@@ -42,17 +42,17 @@ export default function AnalyticsCharts() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="revenue" fill="#3B82F6" />
+              <Bar name="Ingresos (Bs.)" dataKey="revenue" fill="#3B82F6" />
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-slate-500">Sin datos</p>
+          <p className="text-slate-500">Sin depósitos registrados todavía.</p>
         )}
       </div>
 
       {/* Event Distribution */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-        <h3 className="text-lg font-bold text-slate-800 mb-4">Distribución de Eventos</h3>
+        <h3 className="text-lg font-bold text-slate-800 mb-4">Distribución de Eventos (Últimos 30 días)</h3>
         {eventStats.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>

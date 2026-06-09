@@ -9,8 +9,9 @@ import {
 } from 'lucide-react';
 import { useEngagement } from '../hooks/useEngagement';
 import { useFunnel } from '../hooks/useFunnel';
-import { useApplicationsTrend } from '../hooks/useApplicationsTrend';
+import { useJobViewsTrend } from '../hooks/useJobViewsTrend';
 import { useScraperHealth } from '../hooks/useScraperHealth';
+import InfoTip from './InfoTip';
 
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-2xl p-6 shadow-sm border border-slate-100 ${className}`}>
@@ -18,11 +19,13 @@ const Card = ({ children, className = '' }) => (
   </div>
 );
 
-const Kpi = ({ title, value, icon: Icon, color, sub }) => (
+const Kpi = ({ title, value, icon: Icon, color, sub, tip }) => (
   <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-100">
     <div className="flex justify-between items-start gap-2">
       <div className="min-w-0">
-        <p className="text-slate-500 text-xs sm:text-sm font-medium leading-tight">{title}</p>
+        <p className="text-slate-500 text-xs sm:text-sm font-medium leading-tight flex items-center gap-1">
+          {title}{tip && <InfoTip text={tip} />}
+        </p>
         <h3 className="text-xl sm:text-2xl font-bold mt-1.5 text-slate-800 truncate">{value}</h3>
         {sub && <p className="text-[10px] text-slate-400 mt-0.5 truncate">{sub}</p>}
       </div>
@@ -58,7 +61,7 @@ function StatusBadge({ status }) {
 export default function ProjectAnalytics() {
   const { metrics, dauTrend, loading: engLoading } = useEngagement();
   const { stages, loading: funnelLoading } = useFunnel();
-  const { data: appsTrend, total: appsTotal, loading: appsLoading } = useApplicationsTrend();
+  const { data: viewsTrend, total: viewsTotal, loading: viewsLoading } = useJobViewsTrend();
   const { runs, bySource, insertedTrend, stats, loading: scraperLoading } = useScraperHealth();
 
   return (
@@ -72,10 +75,14 @@ export default function ProjectAnalytics() {
           </p>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Kpi title="Activos hoy (DAU)" value={engLoading ? '…' : metrics.dau} icon={Activity} color="bg-emerald-500" />
-          <Kpi title="Activos semana (WAU)" value={engLoading ? '…' : metrics.wau} icon={Users} color="bg-primary-500" />
-          <Kpi title="Activos mes (MAU)" value={engLoading ? '…' : metrics.mau} icon={CalendarDays} color="bg-primary-700" />
-          <Kpi title="Stickiness" value={engLoading ? '…' : `${metrics.stickiness}%`} icon={Repeat} color="bg-amber-500" sub="DAU / MAU" />
+          <Kpi title="Activos hoy (DAU)" value={engLoading ? '…' : metrics.dau} icon={Activity} color="bg-emerald-500"
+            tip="Daily Active Users: personas distintas que usaron la app en las últimas 24 h." />
+          <Kpi title="Activos semana (WAU)" value={engLoading ? '…' : metrics.wau} icon={Users} color="bg-primary-500"
+            tip="Weekly Active Users: personas distintas activas en los últimos 7 días." />
+          <Kpi title="Activos mes (MAU)" value={engLoading ? '…' : metrics.mau} icon={CalendarDays} color="bg-primary-700"
+            tip="Monthly Active Users: personas distintas activas en los últimos 30 días." />
+          <Kpi title="Stickiness" value={engLoading ? '…' : `${metrics.stickiness}%`} icon={Repeat} color="bg-amber-500" sub="DAU / MAU"
+            tip="DAU ÷ MAU. Qué % de los activos del mes vuelve a diario; más alto = más recurrencia." />
         </div>
 
         <Card>
@@ -124,16 +131,16 @@ export default function ProjectAnalytics() {
 
         <Card>
           <div className="flex justify-between items-baseline mb-4">
-            <h4 className="font-bold text-slate-800">Postulaciones por día</h4>
-            <span className="text-xs text-slate-400">{appsLoading ? '' : `${appsTotal} en 30 días`}</span>
+            <h4 className="font-bold text-slate-800">Vistas de empleos por día</h4>
+            <span className="text-xs text-slate-400">{viewsLoading ? '' : `${viewsTotal.toLocaleString()} en 30 días`}</span>
           </div>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={appsTrend}>
+            <BarChart data={viewsTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="date" tick={{ fontSize: 11 }} interval={4} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
               <Tooltip />
-              <Bar dataKey="postulaciones" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+              <Bar name="Vistas" dataKey="vistas" fill="#3B82F6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -147,10 +154,14 @@ export default function ProjectAnalytics() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Kpi title="Tasa de éxito" value={scraperLoading ? '…' : `${stats.successRate}%`} icon={CheckCircle2} color="bg-emerald-500" />
-          <Kpi title="Corridas (30d)" value={scraperLoading ? '…' : stats.totalRuns} icon={Server} color="bg-primary-500" />
-          <Kpi title="Ofertas activas" value={scraperLoading ? '…' : stats.activeJobs.toLocaleString()} icon={FileText} color="bg-primary-700" />
-          <Kpi title="Última corrida" value={scraperLoading ? '…' : relTime(stats.lastRunAt)} icon={Clock} color="bg-amber-500" />
+          <Kpi title="Tasa de éxito" value={scraperLoading ? '…' : `${stats.successRate}%`} icon={CheckCircle2} color="bg-emerald-500"
+            tip="% de corridas del scraper que terminaron OK en los últimos 30 días." />
+          <Kpi title="Corridas (30d)" value={scraperLoading ? '…' : stats.totalRuns} icon={Server} color="bg-primary-500"
+            tip="Número de ejecuciones del scraper de empleos en los últimos 30 días." />
+          <Kpi title="Ofertas activas" value={scraperLoading ? '…' : stats.activeJobs.toLocaleString()} icon={FileText} color="bg-primary-700"
+            tip="Empleos externos (scrapeados) que están abiertos ahora mismo." />
+          <Kpi title="Última corrida" value={scraperLoading ? '…' : relTime(stats.lastRunAt)} icon={Clock} color="bg-amber-500"
+            tip="Cuándo se ejecutó el scraper por última vez." />
         </div>
 
         <Card>
