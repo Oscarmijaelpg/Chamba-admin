@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFinance } from '../hooks/useFinance';
+import Pagination from './Pagination';
 import {
   ArrowUpRight,
   ArrowDownLeft,
@@ -11,7 +12,11 @@ import {
 
 export default function FinanceView() {
   const [filter, setFilter] = useState('all');
-  const { transactions, loading, approveTransaction, rejectTransaction } = useFinance(filter);
+  const {
+    transactions, pendingWithdrawals, loading, isFetching,
+    approveTransaction, rejectTransaction,
+    page, setPage, totalPages, total, pageSize,
+  } = useFinance(filter);
 
   return (
     <div className="space-y-6">
@@ -105,6 +110,15 @@ export default function FinanceView() {
         </div>
       </div>
 
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        onPage={setPage}
+        isFetching={isFetching}
+      />
+
       {/* Withdrawals Section */}
       <div className="space-y-6 mt-8">
         <div>
@@ -126,13 +140,10 @@ export default function FinanceView() {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr><td colSpan="4" className="px-6 py-6 text-center text-slate-400 text-sm">Cargando...</td></tr>
-              ) : transactions
-                .filter(tx => tx.type === 'withdrawal' && tx.status === 'pending')
-                .length === 0 ? (
+              ) : pendingWithdrawals.length === 0 ? (
                 <tr><td colSpan="4" className="px-6 py-6 text-center text-slate-400 text-sm">No hay retiros pendientes</td></tr>
               ) : (
-                transactions
-                  .filter(tx => tx.type === 'withdrawal' && tx.status === 'pending')
+                pendingWithdrawals
                   .map((tx) => (
                     <tr key={tx.id} className="hover:bg-slate-50/50 transition-all">
                       <td className="px-4 py-3">

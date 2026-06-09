@@ -3,10 +3,13 @@ import { useUsers } from '../hooks/useUsers';
 import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2, Cake } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import UserDetailModal from './UserDetailModal';
+import Pagination from './Pagination';
 
 export default function UsersTable() {
-  const { users, loading, setBanned, deleteUser } = useUsers();
-  const [searchTerm, setSearchTerm] = useState('');
+  const {
+    users, loading, isFetching, setBanned, deleteUser,
+    search, setSearch, page, setPage, totalPages, total, pageSize,
+  } = useUsers();
   const [selectedUser, setSelectedUser] = useState(null);
   const [confirmState, setConfirmState] = useState({ open: false, user: null, action: null });
   const [actionLoading, setActionLoading] = useState(false);
@@ -62,10 +65,8 @@ export default function UsersTable() {
     },
   }[confirmState.action] || {};
 
-  const filteredUsers = users.filter(u =>
-    u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // La búsqueda y la paginación se resuelven en el servidor (hook useUsers).
+  const filteredUsers = users;
 
   return (
     <div className="space-y-5">
@@ -80,7 +81,7 @@ export default function UsersTable() {
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Gestión de Usuarios</h2>
-          <p className="text-slate-400 text-sm mt-0.5">{users.length} usuarios registrados</p>
+          <p className="text-slate-400 text-sm mt-0.5">{total.toLocaleString()} usuarios registrados</p>
         </div>
         <div className="relative sm:ml-auto w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -88,8 +89,8 @@ export default function UsersTable() {
             type="text"
             placeholder="Buscar por nombre o email..."
             className="w-full pl-10 pr-4 py-2.5 bg-white rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
@@ -218,6 +219,16 @@ export default function UsersTable() {
           </div>
         </>
       )}
+
+      {/* Paginación */}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        onPage={setPage}
+        isFetching={isFetching}
+      />
 
       {/* Modal de detalle */}
       {selectedUser && (

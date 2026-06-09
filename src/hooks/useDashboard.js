@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { actionText, actionIcon } from '../lib/auditLabels';
+
+const KEY = ['dashboard'];
 
 function relTime(isoString) {
   const mins = Math.floor((Date.now() - new Date(isoString).getTime()) / 60000);
@@ -7,81 +10,63 @@ function relTime(isoString) {
 }
 
 export function useDashboard(user) {
-  const [stats, setStats] = useState({ users: 0, chambas: 0, revenue: 0, commission: 0, reports: 0, activeUsers: 0 });
-  const [pendingTx, setPendingTx] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const qc = useQueryClient();
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const since30d = new Date();
-      since30d.setDate(since30d.getDate() - 30);
-      since30d.setHours(0, 0, 0, 0);
+  const { data, isLoading, error } = useQuery({
+    queryKey: KEY,
+    enabled: !!user,
+    queryFn: async () => {
+      // Todo agregado en Postgres (RPC admin_dashboard_stats): sumas, conteos y
+      // los feeds acotados (recargas pendientes + actividad reciente). Una sola
+      // llamada, sin bajar filas para reducir en el navegador.
+      const { data, error } = await supabase.rpc('admin_dashboard_stats');
+      if (error) throw error;
+      return data;
+    },
+  });
 
-      const [
-        { count: usersCount },
-        { count: chambasCount },
-        { data: allTx },
-        { data: payments },
-        { count: reportsCount },
-        { data: configData },
-        { data: tx },
-        { data: recentChambas },
-        { data: recentUsers },
-        { data: recentTxActivity },
-        { data: activeUsersData },
-      ] = await Promise.all([
-        supabase.from('users').select('*', { count: 'exact', head: true }),
-        supabase.from('chambas').select('*', { count: 'exact', head: true }).neq('status', 'completed'),
-        supabase.from('wallet_transactions').select('amount').eq('type', 'deposit').eq('status', 'completed'),
-        supabase.from('payments').select('amount').eq('status', 'released'),
-        supabase.from('chamba_reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('app_config').select('value').eq('id', 'global_settings').single(),
-        supabase.from('wallet_transactions').select('*, users(full_name)').eq('status', 'pending').order('created_at', { ascending: false }),
-        supabase.from('chambas').select('created_at').order('created_at', { ascending: false }).limit(1),
-        supabase.from('users').select('created_at').order('created_at', { ascending: false }).limit(1),
-        supabase.from('wallet_transactions').select('type, created_at').in('type', ['deposit', 'withdrawal']).order('created_at', { ascending: false }).limit(1),
-        supabase.from('audit_logs').select('user_id').gte('created_at', since30d.toISOString()),
-      ]);
-
-      const commRate = configData?.value?.commission_rate || 10;
-      const totalRevenue = allTx?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
-      const totalCommission = payments?.reduce((acc, curr) => acc + (curr.amount * (commRate / 100)), 0) || 0;
-      const activeUsers = new Set(activeUsersData?.map(r => r.user_id).filter(Boolean)).size;
-
-      setStats({ users: usersCount || 0, chambas: chambasCount || 0, revenue: totalRevenue, commission: totalCommission, reports: reportsCount || 0, activeUsers });
-      setPendingTx(tx || []);
-
-      const activities = [];
-      if (recentChambas?.length) activities.push({ id: 1, text: 'Nueva chamba publicada', time: relTime(recentChambas[0].created_at), icon: 'briefcase' });
-      if (recentUsers?.length) activities.push({ id: 2, text: 'Nuevo usuario registrado', time: relTime(recentUsers[0].created_at), icon: 'user' });
-      if (recentTxActivity?.length) activities.push({ id: 3, text: recentTxActivity[0].type === 'deposit' ? 'Depósito recibido' : 'Retiro procesado', time: relTime(recentTxActivity[0].created_at), icon: 'wallet' });
-
-      setRecentActivity(activities.slice(0, 5));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
+  const stats = {
+    users: data?.users ?? 0,
+    chambas: data?.chambas ?? 0,
+    revenue: Number(data?.revenue ?? 0),
+    commission: Number(data?.commission ?? 0),
+    reports: data?.reports ?? 0,
+    activeUsers: data?.activeUsers ?? 0,
   };
 
-  const handleApprove = async (id) => {
-    const { error } = await supabase.from('wallet_transactions').update({ status: 'completed' }).eq('id', id);
-    if (!error) fetchDashboardData();
-  };
+  const pendingTx = data?.pendingTx ?? [];
 
-  const handleReject = async (id) => {
+  const recentActivity = (data?.recentActivity ?? []).map((a) => ({
+    id: a.id,
+    text: a.full_name ? `${actionText(a.action)} · ${a.full_name}` : actionText(a.action),
+    time: relTime(a.created_at),
+    icon: actionIcon(a.action),
+  }));
+
+  const txMutation = useMutation({
+    mutationFn: async ({ id, status }) => {
+      const { error } = await supabase.from('wallet_transactions').update({ status }).eq('id', id);
+      if (error) throw error;
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ['wallet_transactions'] });
+    },
+  });
+
+  const handleApprove = (id) => txMutation.mutate({ id, status: 'completed' });
+  const handleReject = (id) => {
     if (!window.confirm('¿Rechazar esta transacción?')) return;
-    const { error } = await supabase.from('wallet_transactions').update({ status: 'failed' }).eq('id', id);
-    if (!error) fetchDashboardData();
+    txMutation.mutate({ id, status: 'failed' });
   };
 
-  useEffect(() => {
-    if (user) fetchDashboardData();
-  }, [user]);
-
-  return { stats, pendingTx, recentActivity, loading, error, handleApprove, handleReject };
+  return {
+    stats,
+    pendingTx,
+    recentActivity,
+    loading: isLoading,
+    error: error ? (error.message ?? 'Error') : null,
+    handleApprove,
+    handleReject,
+  };
 }

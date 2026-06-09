@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { useReports } from '../hooks/useReports';
 import { AlertTriangle, Trash2, CheckCircle } from 'lucide-react';
+import Pagination from './Pagination';
 
 export default function ReportsView() {
   const [filter, setFilter] = useState('pending');
-  const { reports, loading, resolveReport } = useReports(filter);
+  const {
+    reports, loading, isFetching, resolveReport,
+    page, setPage, totalPages, total, pageSize,
+  } = useReports(filter);
 
   const handleResolve = async (reportId, chambaId, action) => {
     if (action === 'delete' && !confirm('¿Eliminar la chamba reportada?')) return;
@@ -50,7 +54,7 @@ export default function ReportsView() {
               
               <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-2">Motivo del reporte:</p>
-                <p className="text-sm text-slate-700 leading-relaxed italic">"{report.reason}"</p>
+                <p className="text-sm text-slate-700 leading-relaxed italic">&ldquo;{report.reason}&rdquo;</p>
               </div>
               
               <div className="flex justify-end gap-3 mt-6">
@@ -79,6 +83,15 @@ export default function ReportsView() {
           </div>
         )}
       </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        onPage={setPage}
+        isFetching={isFetching}
+      />
     </div>
   );
 }

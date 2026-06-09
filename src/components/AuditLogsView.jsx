@@ -1,41 +1,20 @@
 import React, { useState } from 'react';
 import { useAuditLogs } from '../hooks/useAuditLogs';
 import { Search, Clock, User, Shield, AlertTriangle, RefreshCw } from 'lucide-react';
-
-const ACTION_LABELS = {
-  'user.register': 'Nuevo usuario registrado',
-  'user.login': 'Inicio de sesión',
-  'chamba.create': 'Publicó una chamba',
-  'chamba.update': 'Actualizó una chamba',
-  'chamba.delete': 'Eliminó una chamba',
-  'chamba.complete': 'Completó una chamba',
-  'chamba.cancel': 'Canceló una chamba',
-  'payment.deposit': 'Depósito realizado',
-  'payment.withdraw': 'Retiro solicitado',
-  'payment.release': 'Pago liberado (escrow)',
-  'payment.refund': 'Pago reembolsado',
-  'report.create': 'Reportó a un usuario',
-  'report.resolve': 'Reporte resuelto',
-  'user.suspend': 'Usuario suspendido',
-  'user.unsuspend': 'Usuario reactivado',
-  'admin.action': 'Acción administrativa',
-};
+import Pagination from './Pagination';
+import { ACTION_LABELS } from '../lib/auditLabels';
 
 export default function AuditLogsView() {
-  const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
-  const [dateRange, setDateRange] = useState('today');
-  const { logs, loading, refresh } = useAuditLogs(actionFilter, dateRange);
+  // Por defecto mostramos todo el historial guardado (paginado), no solo hoy.
+  const [dateRange, setDateRange] = useState('all');
+  const {
+    logs, loading, isFetching, stats, refresh,
+    search, setSearch, page, setPage, totalPages, total, pageSize,
+  } = useAuditLogs(actionFilter, dateRange);
 
-  const filteredLogs = logs.filter(log => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return (
-      log.user?.full_name?.toLowerCase().includes(searchLower) ||
-      log.action?.toLowerCase().includes(searchLower) ||
-      log.details?.toString()?.toLowerCase().includes(searchLower)
-    );
-  });
+  // Búsqueda (por acción), filtros, stats y paginación se resuelven en el servidor.
+  const filteredLogs = logs;
 
   const getActionIcon = (action) => {
     if (action?.includes('register') || action?.includes('login')) return <User size={16} />;
@@ -52,13 +31,6 @@ export default function AuditLogsView() {
     if (action?.includes('payment') && action?.includes('deposit')) return 'bg-emerald-100 text-emerald-600';
     if (action?.includes('payment') && action?.includes('withdraw')) return 'bg-amber-100 text-amber-600';
     return 'bg-slate-100 text-slate-600';
-  };
-
-  const stats = {
-    total: logs.length,
-    users: logs.filter(l => l.action?.includes('user')).length,
-    chambas: logs.filter(l => l.action?.includes('chamba')).length,
-    payments: logs.filter(l => l.action?.includes('payment')).length,
   };
 
   return (
@@ -195,6 +167,15 @@ export default function AuditLogsView() {
           </div>
         )}
       </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        onPage={setPage}
+        isFetching={isFetching}
+      />
     </div>
   );
 }

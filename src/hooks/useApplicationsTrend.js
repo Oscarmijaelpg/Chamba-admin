@@ -1,58 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { dayLabel } from '../lib/dates';
 
-// Postulaciones por día (últimos 30 días) a partir de la tabla `applications`.
-function buildDaySeries(days) {
-  const series = {};
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    d.setHours(0, 0, 0, 0);
-    const key = d.toISOString().slice(0, 10);
-    series[key] = {
-      date: d.toLocaleDateString('es-BO', { day: 'numeric', month: 'short' }),
-      postulaciones: 0,
-    };
-  }
-  return series;
-}
-
+// Postulaciones por día (30d), agregado en Postgres vía RPC admin_applications_trend.
 export function useApplicationsTrend() {
-  const [data, setData] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useQuery({
+    queryKey: ['analytics', 'applications_trend', 30],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_applications_trend', { p_days: 30 });
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60_000,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
+  const series = (data?.series ?? []).map((s) => ({
+    date: dayLabel(s.d),
+    postulaciones: s.postulaciones,
+  }));
 
-    async function fetchData() {
-      setLoading(true);
-      const since = new Date();
-      since.setDate(since.getDate() - 30);
-      since.setHours(0, 0, 0, 0);
-
-      const { data: rows, error } = await supabase
-        .from('applications')
-        .select('created_at')
-        .gte('created_at', since.toISOString());
-
-      if (cancelled) return;
-      if (error) { setLoading(false); return; }
-
-      const series = buildDaySeries(30);
-      (rows ?? []).forEach((r) => {
-        const key = (r.created_at ?? '').slice(0, 10);
-        if (series[key]) series[key].postulaciones += 1;
-      });
-
-      setData(Object.values(series));
-      setTotal(rows?.length ?? 0);
-      setLoading(false);
-    }
-
-    fetchData();
-    return () => { cancelled = true; };
-  }, []);
-
-  return { data, total, loading };
+  return { data: series, total: data?.total ?? 0, loading: isLoading };
 }

@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Search, MapPin, Trash2, ExternalLink } from 'lucide-react';
 import { useChambas } from '../hooks/useChambas';
+import Pagination from './Pagination';
 
 export default function ChambasTable() {
-  const { chambas, loading, updateStatus, deleteChamba } = useChambas();
-  const [searchTerm, setSearchTerm] = useState('');
+  const {
+    chambas, loading, isFetching, updateStatus, deleteChamba,
+    search, setSearch, page, setPage, totalPages, total, pageSize,
+  } = useChambas();
 
   const handleStatusChange = (id, newStatus) => updateStatus(id, newStatus);
 
@@ -14,10 +17,8 @@ export default function ChambasTable() {
     }
   };
 
-  const filteredChambas = chambas.filter(c => 
-    c.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Búsqueda y paginación resueltas en el servidor (hook useChambas).
+  const filteredChambas = chambas;
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -39,8 +40,8 @@ export default function ChambasTable() {
             type="text"
             placeholder="Buscar por título o descripción..."
             className="w-full pl-10 pr-4 py-2 bg-white rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
@@ -111,6 +112,15 @@ export default function ChambasTable() {
           </div>
         ))}
       </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        onPage={setPage}
+        isFetching={isFetching}
+      />
     </div>
   );
 }

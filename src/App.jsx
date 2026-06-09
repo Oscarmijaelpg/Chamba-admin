@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -7,7 +7,6 @@ import {
   Wallet,
   Settings,
   LogOut,
-  Search,
   Bell,
   AlertTriangle,
   Shield,
@@ -18,21 +17,31 @@ import {
 } from 'lucide-react';
 
 import LoginView from './components/LoginView';
-import DashboardView from './components/DashboardView';
-import UsersTable from './components/UsersTable';
-import ChambasTable from './components/ChambasTable';
-import FinanceView from './components/FinanceView';
-import SettingsView from './components/SettingsView';
-import ReportsView from './components/ReportsView';
-import AuditLogsView from './components/AuditLogsView';
-import PricingView from './components/PricingView';
-import JobsTable from './components/JobsTable';
-import AnalyticsCharts from './components/AnalyticsCharts';
-import ProjectAnalytics from './components/ProjectAnalytics';
-import AlertsConfig from './components/AlertsConfig';
-import AgeAnalytics from './components/AgeAnalytics';
 import DarkModeToggle from './components/DarkModeToggle';
 import { useAuth } from './hooks/useAuth';
+
+// Vistas cargadas bajo demanda (code-splitting por ruta): cada una es su propio
+// chunk, así recharts y demás no entran al bundle inicial hasta visitar su vista.
+const DashboardView = lazy(() => import('./components/DashboardView'));
+const UsersTable = lazy(() => import('./components/UsersTable'));
+const ChambasTable = lazy(() => import('./components/ChambasTable'));
+const FinanceView = lazy(() => import('./components/FinanceView'));
+const SettingsView = lazy(() => import('./components/SettingsView'));
+const ReportsView = lazy(() => import('./components/ReportsView'));
+const AuditLogsView = lazy(() => import('./components/AuditLogsView'));
+const PricingView = lazy(() => import('./components/PricingView'));
+const JobsTable = lazy(() => import('./components/JobsTable'));
+const AnalyticsCharts = lazy(() => import('./components/AnalyticsCharts'));
+const ProjectAnalytics = lazy(() => import('./components/ProjectAnalytics'));
+const AlertsConfig = lazy(() => import('./components/AlertsConfig'));
+const AgeAnalytics = lazy(() => import('./components/AgeAnalytics'));
+
+// Fallback mientras carga el chunk de la vista.
+const RouteFallback = () => (
+  <div className="flex items-center justify-center py-24 text-slate-400">
+    <div className="w-7 h-7 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 const NAV_ITEMS = [
   { path: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
@@ -162,14 +171,9 @@ export default function App() {
             <Menu size={20} />
           </button>
 
-          <div className="relative flex-1 md:max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Buscar usuarios, transacciones..."
-              className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all shadow-sm"
-            />
-          </div>
+          {/* La búsqueda vive dentro de cada vista (Usuarios, Trabajos, …),
+              resuelta en el servidor. Aquí sólo dejamos el espaciado del header. */}
+          <div className="flex-1" />
 
           <div className="flex items-center gap-2 shrink-0">
             <NavLink
@@ -190,6 +194,7 @@ export default function App() {
           </div>
         </header>
 
+        <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardView user={user} />} />
@@ -227,6 +232,7 @@ export default function App() {
           <Route path="/settings" element={<SettingsView />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
+        </Suspense>
       </main>
     </div>
   );

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 
 const PERIODS = {
@@ -7,69 +8,26 @@ const PERIODS = {
   '90d': { days: 90, label: 'Últimos 3 meses',   fmt: (d) => d.toLocaleDateString('es-BO', { day: 'numeric', month: 'short' }) },
 };
 
-function buildEmptySeries(days, fmt) {
-  const series = {};
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    d.setHours(0, 0, 0, 0);
-    const key = d.toISOString().slice(0, 10);
-    series[key] = { date: fmt(d), nuevos: 0, total: 0, _key: key };
-  }
-  return series;
-}
-
+// Crecimiento de usuarios: nuevos por día (RPC admin_user_growth) + acumulado en JS.
 export function useUserGrowth() {
   const [period, setPeriod] = useState('30d');
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [totalPeriod, setTotalPeriod] = useState(0);
+  const { days, fmt } = PERIODS[period];
 
-  useEffect(() => {
-    let cancelled = false;
+  const { data: rpc, isLoading } = useQuery({
+    queryKey: ['analytics', 'user_growth', period],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_user_growth', { p_days: days });
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60_000,
+  });
 
-    async function fetch() {
-      setLoading(true);
-      const { days, fmt } = PERIODS[period];
+  let acc = 0;
+  const data = (rpc?.series ?? []).map((s) => {
+    acc += s.nuevos;
+    return { date: fmt(new Date(`${s.d}T00:00:00`)), nuevos: s.nuevos, acumulado: acc };
+  });
 
-      const since = new Date();
-      since.setDate(since.getDate() - days);
-      since.setHours(0, 0, 0, 0);
-
-      const { data: rows, error } = await supabase
-        .from('users')
-        .select('created_at')
-        .gte('created_at', since.toISOString())
-        .order('created_at', { ascending: true });
-
-      if (cancelled) return;
-      if (error) { setLoading(false); return; }
-
-      const series = buildEmptySeries(days, fmt);
-
-      let running = 0;
-      Object.values(series).forEach(slot => { slot._running = 0; });
-
-      rows?.forEach(r => {
-        const key = r.created_at.slice(0, 10);
-        if (series[key]) series[key].nuevos += 1;
-      });
-
-      // acumulado
-      let acc = 0;
-      const result = Object.values(series).map(slot => {
-        acc += slot.nuevos;
-        return { date: slot.date, nuevos: slot.nuevos, acumulado: acc };
-      });
-
-      setTotalPeriod(rows?.length ?? 0);
-      setData(result);
-      setLoading(false);
-    }
-
-    fetch();
-    return () => { cancelled = true; };
-  }, [period]);
-
-  return { data, loading, period, setPeriod, periods: PERIODS, totalPeriod };
+  return { data, loading: isLoading, period, setPeriod, periods: PERIODS, totalPeriod: rpc?.total ?? 0 };
 }

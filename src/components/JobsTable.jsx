@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Search, MapPin, Building2, User, Calendar, Briefcase, ChevronRight, Globe, Home } from 'lucide-react';
 import { useJobs } from '../hooks/useJobs';
 import ConfirmModal from './ConfirmModal';
 import JobDetailModal from './JobDetailModal';
+import Pagination from './Pagination';
 
 const STATUS_COLOR = {
   open:           'bg-green-50 text-green-600',
@@ -59,39 +60,21 @@ const Kpi = ({ title, value, icon: Icon, color, sub }) => (
 );
 
 export default function JobsTable() {
-  const { jobs, loading, updateJob, deleteJob } = useJobs();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatus]   = useState('all');
-  const [cityFilter, setCity]       = useState('all');
-  const [sourceFilter, setSource]   = useState('all');
+  const {
+    jobs, loading, isFetching, updateJob, deleteJob,
+    stats, cities, page, setPage, totalPages, pageTotal, pageSize,
+    search, setSearch,
+    status: statusFilter, setStatus,
+    city: cityFilter, setCity,
+    source: sourceFilter, setSource,
+  } = useJobs();
   const [selectedJob, setSelectedJob] = useState(null);
   const [confirm, setConfirm]         = useState({ open: false, id: null });
   const [actionLoading, setActionLoading] = useState(false);
 
-  const cities = useMemo(() => {
-    const set = new Set(jobs.map(j => j.city).filter(Boolean));
-    return Array.from(set).sort();
-  }, [jobs]);
-
-  const metrics = useMemo(() => {
-    const total = jobs.length;
-    const external = jobs.filter(j => j.is_external).length;
-    const own = total - external;
-    return { total, external, own, externalPct: total ? Math.round((external / total) * 100) : 0 };
-  }, [jobs]);
-
-  const filtered = useMemo(() => jobs.filter(job => {
-    const q = searchTerm.toLowerCase();
-    const matchSearch = !searchTerm ||
-      job.title?.toLowerCase().includes(q) ||
-      job.company?.toLowerCase().includes(q) ||
-      job.employer?.full_name?.toLowerCase().includes(q);
-    const matchStatus = statusFilter === 'all' || job.status === statusFilter;
-    const matchCity   = cityFilter === 'all'   || job.city === cityFilter;
-    const matchSource = sourceFilter === 'all'
-      || (sourceFilter === 'external' ? !!job.is_external : !job.is_external);
-    return matchSearch && matchStatus && matchCity && matchSource;
-  }), [jobs, searchTerm, statusFilter, cityFilter, sourceFilter]);
+  // KPIs globales (del RPC); búsqueda/filtros/paginación resueltos en el servidor.
+  const metrics = { ...stats, externalPct: stats.total ? Math.round((stats.external / stats.total) * 100) : 0 };
+  const filtered = jobs;
 
   const openDeleteConfirm = (id) => setConfirm({ open: true, id });
   const closeConfirm = () => setConfirm({ open: false, id: null });
@@ -109,7 +92,7 @@ export default function JobsTable() {
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Gestión de Trabajos</h2>
-        <p className="text-slate-400 text-sm mt-0.5">{filtered.length} de {jobs.length} trabajos</p>
+        <p className="text-slate-400 text-sm mt-0.5">{pageTotal.toLocaleString()} de {metrics.total.toLocaleString()} trabajos</p>
       </div>
 
       {/* Métricas: externos vs propios */}
@@ -117,7 +100,7 @@ export default function JobsTable() {
         <Kpi title="Total trabajos" value={metrics.total} icon={Briefcase} color="bg-primary-600" />
         <Kpi title="Externos (scraper)" value={metrics.external} icon={Globe} color="bg-blue-500" sub={`${metrics.externalPct}% del total`} />
         <Kpi title="Propios (app)" value={metrics.own} icon={Home} color="bg-emerald-500" sub={`${100 - metrics.externalPct}% del total`} />
-        <Kpi title="Mostrando" value={filtered.length} icon={Search} color="bg-amber-500" sub="con filtros actuales" />
+        <Kpi title="Mostrando" value={pageTotal.toLocaleString()} icon={Search} color="bg-amber-500" sub="con filtros actuales" />
       </div>
 
       {/* Filtros */}
@@ -126,10 +109,10 @@ export default function JobsTable() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input
             type="text"
-            placeholder="Buscar por título, empresa o empleador..."
+            placeholder="Buscar por título o empresa..."
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
@@ -246,6 +229,16 @@ export default function JobsTable() {
           </div>
         </>
       )}
+
+      {/* Paginación */}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={pageTotal}
+        pageSize={pageSize}
+        onPage={setPage}
+        isFetching={isFetching}
+      />
 
       {/* Modal detalle */}
       {selectedJob && (
