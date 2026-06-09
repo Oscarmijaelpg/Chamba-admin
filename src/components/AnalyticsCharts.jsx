@@ -11,9 +11,10 @@ export default function AnalyticsCharts() {
 
   return (
     <div className="space-y-6">
-      {/* User Trend */}
+      {/* Event volume per day */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-        <h3 className="text-lg font-bold text-slate-800 mb-4">Usuarios por Día (Últimos 30 días)</h3>
+        <h3 className="text-lg font-bold text-slate-800">Eventos por Día (Últimos 30 días)</h3>
+        <p className="text-sm text-slate-400 mb-4">Total de acciones (vistas, logins, búsquedas…), no usuarios únicos. Para activos únicos, ver “Usuarios activos por día”.</p>
         {userTrend.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={userTrend}>
@@ -22,7 +23,7 @@ export default function AnalyticsCharts() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="users" stroke="#10B981" strokeWidth={2} />
+              <Line type="monotone" name="Eventos" dataKey="users" stroke="#10B981" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         ) : (

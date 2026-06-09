@@ -221,11 +221,28 @@ BEGIN
       ) t
     ),
     'recentActivity', (
-      SELECT coalesce(jsonb_agg(a ORDER BY a.created_at DESC), '[]'::jsonb) FROM (
-        SELECT al.id, al.action, al.created_at, u.full_name
-        FROM audit_logs al LEFT JOIN users u ON u.id = al.user_id
-        ORDER BY al.created_at DESC LIMIT 8
-      ) a
+      -- Actividad real de la plataforma: registros, chambas y movimientos de billetera,
+      -- mezclados y ordenados por fecha. (NO es el audit log de mutaciones del admin.)
+      SELECT coalesce(jsonb_agg(x ORDER BY x.created_at DESC), '[]'::jsonb) FROM (
+        SELECT * FROM (
+          SELECT u.id::text AS id, 'user'::text AS kind, u.created_at, u.full_name AS label
+          FROM users u ORDER BY u.created_at DESC LIMIT 8
+        ) a
+        UNION ALL
+        SELECT * FROM (
+          SELECT c.id::text, 'chamba'::text, c.created_at, e.full_name
+          FROM chambas c LEFT JOIN users e ON e.id = c.employer_id
+          ORDER BY c.created_at DESC LIMIT 8
+        ) b
+        UNION ALL
+        SELECT * FROM (
+          SELECT wt.id::text, (CASE WHEN wt.type = 'deposit' THEN 'deposit' ELSE 'withdrawal' END)::text,
+                 wt.created_at, uu.full_name
+          FROM wallet_transactions wt LEFT JOIN users uu ON uu.id = wt.user_id
+          ORDER BY wt.created_at DESC LIMIT 8
+        ) c2
+        ORDER BY created_at DESC LIMIT 8
+      ) x
     )
   ) INTO res;
   RETURN res;
