@@ -279,3 +279,40 @@ END $$;
 REVOKE ALL  ON FUNCTION public.admin_event_trend(text, int) FROM PUBLIC;
 REVOKE ALL  ON FUNCTION public.admin_event_trend(text, int) FROM anon;
 GRANT EXECUTE ON FUNCTION public.admin_event_trend(text, int) TO authenticated;
+
+-- 10) Feed de actividad de la plataforma, paginado: la versión "ver todo" del feed
+--     "Actividad Reciente" del dashboard (registros + chambas + movimientos), NO el
+--     audit log de mutaciones. Mismo origen que recentActivity, por eso "cuadra".
+CREATE OR REPLACE FUNCTION public.admin_activity_feed(p_limit int DEFAULT 25, p_offset int DEFAULT 0)
+ RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $$
+DECLARE res jsonb; v_total bigint;
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'No autorizado'; END IF;
+  v_total := (SELECT count(*) FROM users)
+           + (SELECT count(*) FROM chambas)
+           + (SELECT count(*) FROM wallet_transactions);
+  SELECT jsonb_build_object(
+    'total', v_total,
+    'items', coalesce((
+      SELECT jsonb_agg(jsonb_build_object('id', s.id, 'kind', s.kind, 'label', s.label, 'created_at', s.created_at) ORDER BY s.created_at DESC)
+      FROM (
+        SELECT * FROM (
+          SELECT u.id::text AS id, 'user'::text AS kind, u.created_at, u.full_name AS label FROM users u
+          UNION ALL
+          SELECT c.id::text, 'chamba'::text, c.created_at, e.full_name FROM chambas c LEFT JOIN users e ON e.id = c.employer_id
+          UNION ALL
+          SELECT wt.id::text, (CASE WHEN wt.type = 'deposit' THEN 'deposit' ELSE 'withdrawal' END)::text, wt.created_at, uu.full_name
+          FROM wallet_transactions wt LEFT JOIN users uu ON uu.id = wt.user_id
+        ) feed
+        ORDER BY created_at DESC
+        LIMIT p_limit OFFSET p_offset
+      ) s
+    ), '[]'::jsonb)
+  ) INTO res;
+  RETURN res;
+END $$;
+
+REVOKE ALL  ON FUNCTION public.admin_activity_feed(int, int) FROM PUBLIC;
+REVOKE ALL  ON FUNCTION public.admin_activity_feed(int, int) FROM anon;
+GRANT EXECUTE ON FUNCTION public.admin_activity_feed(int, int) TO authenticated;

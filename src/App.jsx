@@ -35,6 +35,7 @@ const AnalyticsCharts = lazy(() => import('./components/AnalyticsCharts'));
 const ProjectAnalytics = lazy(() => import('./components/ProjectAnalytics'));
 const AlertsConfig = lazy(() => import('./components/AlertsConfig'));
 const AgeAnalytics = lazy(() => import('./components/AgeAnalytics'));
+const ActivityView = lazy(() => import('./components/ActivityView'));
 
 // Fallback mientras carga el chunk de la vista.
 const RouteFallback = () => (
@@ -204,6 +205,7 @@ export default function App() {
           <Route path="/wallet" element={<FinanceView />} />
           <Route path="/reports" element={<ReportsView />} />
           <Route path="/audit" element={<AuditLogsView />} />
+          <Route path="/activity" element={<ActivityView />} />
           <Route path="/analytics" element={
             <div className="space-y-8">
               <div>

@@ -1,20 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { formatActivity } from '../lib/activity';
 
 const KEY = ['dashboard'];
-
-// Tipos de actividad de la plataforma (registros, chambas, billetera) → texto e icono.
-const ACTIVITY_KIND = {
-  user: { text: 'Nuevo usuario registrado', icon: 'user' },
-  chamba: { text: 'Nueva chamba publicada', icon: 'briefcase' },
-  deposit: { text: 'Depósito recibido', icon: 'wallet' },
-  withdrawal: { text: 'Retiro procesado', icon: 'wallet' },
-};
-
-function relTime(isoString) {
-  const mins = Math.floor((Date.now() - new Date(isoString).getTime()) / 60000);
-  return mins < 60 ? `hace ${mins} min` : `hace ${Math.floor(mins / 60)}h`;
-}
 
 export function useDashboard(user) {
   const qc = useQueryClient();
@@ -43,15 +31,7 @@ export function useDashboard(user) {
 
   const pendingTx = data?.pendingTx ?? [];
 
-  const recentActivity = (data?.recentActivity ?? []).map((a) => {
-    const k = ACTIVITY_KIND[a.kind] || { text: 'Actividad', icon: 'user' };
-    return {
-      id: `${a.kind}-${a.id}`,
-      text: a.label ? `${k.text} · ${a.label}` : k.text,
-      time: relTime(a.created_at),
-      icon: k.icon,
-    };
-  });
+  const recentActivity = (data?.recentActivity ?? []).map(formatActivity);
 
   const txMutation = useMutation({
     mutationFn: async ({ id, status }) => {

@@ -99,10 +99,10 @@ export default function DashboardView({ user }) {
             )}
           </div>
           <button
-            onClick={() => navigate('/audit')}
+            onClick={() => navigate('/activity')}
             className="w-full mt-8 py-3 bg-slate-50 text-slate-500 text-sm font-bold rounded-xl hover:bg-slate-100 transition-all"
           >
-            Ver Todo el Registro
+            Ver toda la actividad
           </button>
         </div>
       </div>
