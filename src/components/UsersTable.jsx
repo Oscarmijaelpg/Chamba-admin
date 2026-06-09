@@ -1,14 +1,39 @@
 import React, { useState } from 'react';
 import { useUsers } from '../hooks/useUsers';
-import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2, Cake } from 'lucide-react';
+import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2, Cake, Clock } from 'lucide-react';
+import { relTime } from '../lib/activity';
 import ConfirmModal from './ConfirmModal';
 import UserDetailModal from './UserDetailModal';
 import Pagination from './Pagination';
+
+// Opciones de orden (combinan campo + dirección en un solo valor "campo|dir").
+const SORT_OPTIONS = [
+  { value: 'created_at|desc', label: 'Registro: más reciente' },
+  { value: 'created_at|asc',  label: 'Registro: más antiguo' },
+  { value: 'last_seen|desc',  label: 'Última conexión: reciente' },
+  { value: 'last_seen|asc',   label: 'Última conexión: antigua' },
+  { value: 'age|desc',        label: 'Edad: mayor a menor' },
+  { value: 'age|asc',         label: 'Edad: menor a mayor' },
+  { value: 'full_name|asc',   label: 'Nombre: A → Z' },
+];
+
+const AGE_BANDS = [
+  { value: 'all',   label: 'Todas las edades' },
+  { value: '18-24', label: '18 – 24 años' },
+  { value: '25-34', label: '25 – 34 años' },
+  { value: '35-44', label: '35 – 44 años' },
+  { value: '45-54', label: '45 – 54 años' },
+  { value: '55+',   label: '55+ años' },
+  { value: 'none',  label: 'Sin edad' },
+];
+
+const lastSeenLabel = (iso) => (iso ? relTime(iso) : 'Nunca');
 
 export default function UsersTable() {
   const {
     users, loading, isFetching, setBanned, deleteUser,
     search, setSearch, page, setPage, totalPages, total, pageSize,
+    city, setCity, ageBand, setAgeBand, sort, setSort, dir, setDir, cities,
   } = useUsers();
   const [selectedUser, setSelectedUser] = useState(null);
   const [confirmState, setConfirmState] = useState({ open: false, user: null, action: null });
@@ -95,6 +120,35 @@ export default function UsersTable() {
         </div>
       </div>
 
+      {/* Barra de filtros y orden (resueltos en el servidor) */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        <FilterSelect label="Ciudad" value={city} onChange={setCity}>
+          <option value="">Todas las ciudades</option>
+          {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+        </FilterSelect>
+
+        <FilterSelect label="Edad" value={ageBand} onChange={setAgeBand}>
+          {AGE_BANDS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+        </FilterSelect>
+
+        <FilterSelect
+          label="Ordenar"
+          value={`${sort}|${dir}`}
+          onChange={(v) => { const [s, d] = v.split('|'); setSort(s); setDir(d); }}
+        >
+          {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </FilterSelect>
+
+        {(city || ageBand !== 'all') && (
+          <button
+            onClick={() => { setCity(''); setAgeBand('all'); }}
+            className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-2 py-1.5"
+          >
+            Limpiar filtros
+          </button>
+        )}
+      </div>
+
       {/* Estado vacío / cargando */}
       {loading && (
         <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
@@ -136,6 +190,7 @@ export default function UsersTable() {
                     <th className="px-5 py-3.5">Tipo</th>
                     <th className="px-5 py-3.5">Edad</th>
                     <th className="px-5 py-3.5">Ciudad</th>
+                    <th className="px-5 py-3.5">Última conexión</th>
                     <th className="px-5 py-3.5">Saldo</th>
                     <th className="px-5 py-3.5">Rating</th>
                     <th className="px-5 py-3.5 text-center">Estado</th>
@@ -159,6 +214,12 @@ export default function UsersTable() {
                       </td>
                       <td className="px-5 py-3.5 text-sm text-slate-500">{user.age ? `${user.age}` : '-'}</td>
                       <td className="px-5 py-3.5 text-sm text-slate-500">{user.city || '-'}</td>
+                      <td
+                        className="px-5 py-3.5 text-sm text-slate-500 whitespace-nowrap"
+                        title={user.last_seen ? new Date(user.last_seen).toLocaleString() : 'Sin conexiones registradas'}
+                      >
+                        {lastSeenLabel(user.last_seen)}
+                      </td>
                       <td className="px-5 py-3.5 font-semibold text-slate-800 text-sm whitespace-nowrap">
                         Bs. {user.wallet_balance || 0}
                       </td>
@@ -297,6 +358,9 @@ function UserCard({ user, onView, onBan, onUnban, onDelete }) {
           </span>
         )}
         <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
+          <Clock size={10} /> {lastSeenLabel(user.last_seen)}
+        </span>
+        <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
           <Star size={10} className="text-amber-400 fill-amber-400" />
           {user.rating?.toFixed(1) || '0.0'} ({user.jobs_completed || 0})
         </span>
@@ -336,6 +400,21 @@ function UserCard({ user, onView, onBan, onUnban, onDelete }) {
         )}
       </div>
     </div>
+  );
+}
+
+function FilterSelect({ label, value, onChange, children }) {
+  return (
+    <label className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 pl-3 pr-1 py-1.5">
+      <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none cursor-pointer pr-1"
+      >
+        {children}
+      </select>
+    </label>
   );
 }
 

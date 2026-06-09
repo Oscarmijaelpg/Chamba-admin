@@ -1,34 +1,49 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useDebounce } from './useDebounce';
 import { usePagedQuery } from './usePagedQuery';
 
 const KEY = ['users'];
 
-// PostgREST .or() usa comas/paréntesis como separadores: limpiamos el término
-// para que la búsqueda no rompa la sintaxis del filtro.
-const sanitize = (s) => s.replace(/[,()*]/g, ' ').trim();
-
 export function useUsers() {
   const qc = useQueryClient();
   const [searchInput, setSearchInput] = useState('');
+  const [city, setCity] = useState('');        // '' = todas
+  const [ageBand, setAgeBand] = useState('all'); // all | 18-24 | 25-34 | 35-44 | 45-54 | 55+ | none
+  const [sort, setSort] = useState('created_at'); // created_at | last_seen | age | full_name
+  const [dir, setDir] = useState('desc');          // asc | desc
   const search = useDebounce(searchInput, 350);
 
+  // Ciudades disponibles para el dropdown de filtro (cacheadas 10 min).
+  const { data: cities = [] } = useQuery({
+    queryKey: ['users', 'cities'],
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_user_cities');
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Listado server-side con filtros, orden y `last_seen` por usuario
+  // (RPC admin_users_list). Antes era un .from('users') simple; ahora el orden
+  // por "última conexión" exige el join con analytics_events, hecho en Postgres.
   const paged = usePagedQuery({
     key: KEY,
-    deps: [search],
+    deps: [search, city, ageBand, sort, dir],
     queryFn: async ({ from, to }) => {
-      let q = supabase
-        .from('users')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to);
-      const term = sanitize(search);
-      if (term) q = q.or(`full_name.ilike.%${term}%,email.ilike.%${term}%`);
-      const { data, count, error } = await q;
+      const { data, error } = await supabase.rpc('admin_users_list', {
+        p_search: search || null,
+        p_city: city || null,
+        p_age_band: ageBand,
+        p_sort: sort,
+        p_dir: dir,
+        p_limit: to - from + 1,
+        p_offset: from,
+      });
       if (error) throw error;
-      return { rows: data ?? [], total: count ?? 0 };
+      return { rows: data?.rows ?? [], total: data?.total ?? 0 };
     },
   });
 
@@ -83,6 +98,11 @@ export function useUsers() {
     pageSize: paged.pageSize,
     search: searchInput,
     setSearch: setSearchInput,
+    city, setCity,
+    ageBand, setAgeBand,
+    sort, setSort,
+    dir, setDir,
+    cities,
     setBanned,
     deleteUser,
   };

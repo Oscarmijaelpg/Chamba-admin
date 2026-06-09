@@ -33,6 +33,7 @@ const PricingView = lazy(() => import('./components/PricingView'));
 const JobsTable = lazy(() => import('./components/JobsTable'));
 const AnalyticsCharts = lazy(() => import('./components/AnalyticsCharts'));
 const ProjectAnalytics = lazy(() => import('./components/ProjectAnalytics'));
+const PlatformInsights = lazy(() => import('./components/PlatformInsights'));
 const AlertsConfig = lazy(() => import('./components/AlertsConfig'));
 const AgeAnalytics = lazy(() => import('./components/AgeAnalytics'));
 const ActivityView = lazy(() => import('./components/ActivityView'));
@@ -213,6 +214,7 @@ export default function App() {
                 <p className="text-slate-500">Recurrencia, embudo de conversión, postulaciones y salud del scraper</p>
               </div>
               <ProjectAnalytics />
+              <PlatformInsights />
               <AgeAnalytics />
               <div className="pt-2">
                 <h3 className="text-lg font-bold text-slate-800 mb-1">Eventos y tendencias</h3>
