@@ -166,7 +166,12 @@ END $$;
 
 -- F) Listado de usuarios paginado con filtros (ciudad, edad), búsqueda y orden
 --    (registro, última conexión, edad, nombre). Incluye `last_seen` por usuario
---    (max(timestamp) en analytics_events) para mostrar/ordenar por última conexión.
+--    (max(timestamp) en analytics_events) para mostrar/ordenar por última conexión
+--    y `preferences` (etiquetas de categorías que el usuario guardó como preferencia).
+--
+--    Filtro de edad: p_age_min/p_age_max permiten edad exacta (min=max) o rango
+--    abierto (incl. menores de 18). Cuando vienen, tienen prioridad sobre p_age_band.
+DROP FUNCTION IF EXISTS public.admin_users_list(text,text,text,text,text,int,int);
 CREATE OR REPLACE FUNCTION public.admin_users_list(
   p_search   text DEFAULT NULL,
   p_city     text DEFAULT NULL,
@@ -174,35 +179,59 @@ CREATE OR REPLACE FUNCTION public.admin_users_list(
   p_sort     text DEFAULT 'created_at',
   p_dir      text DEFAULT 'desc',
   p_limit    int  DEFAULT 20,
-  p_offset   int  DEFAULT 0
+  p_offset   int  DEFAULT 0,
+  p_age_min  int  DEFAULT NULL,
+  p_age_max  int  DEFAULT NULL
 ) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
 AS $$
-DECLARE v_sort text; v_dir text;
+DECLARE v_sort text; v_dir text; v_use_range boolean;
 BEGIN
   IF NOT public.is_admin() THEN RAISE EXCEPTION 'No autorizado'; END IF;
 
   -- Whitelist de orden y dirección (no se interpola texto crudo en el ORDER BY).
   v_sort := CASE p_sort WHEN 'last_seen' THEN 'last_seen' WHEN 'age' THEN 'age' WHEN 'full_name' THEN 'full_name' ELSE 'created_at' END;
   v_dir  := CASE lower(coalesce(p_dir,'desc')) WHEN 'asc' THEN 'asc' ELSE 'desc' END;
+  v_use_range := (p_age_min IS NOT NULL OR p_age_max IS NOT NULL);
 
   RETURN (
     WITH base AS (
-      SELECT u.*, ls.last_seen
+      SELECT u.*, ls.last_seen, pr.preferences, pr.pref_notify
       FROM users u
       LEFT JOIN LATERAL (
         SELECT max(e.timestamp) AS last_seen FROM analytics_events e WHERE e.user_id = u.id
       ) ls ON true
+      LEFT JOIN LATERAL (
+        SELECT p.notify AS pref_notify,
+          coalesce((
+            SELECT jsonb_agg(coalesce(jc.label, c.cat) ORDER BY jc.sort_order NULLS LAST, c.cat)
+            FROM unnest(p.categories) AS c(cat)
+            LEFT JOIN job_categories jc ON jc.id = c.cat
+          ), '[]'::jsonb) AS preferences
+        FROM user_job_preferences p
+        WHERE p.user_id = u.id
+        LIMIT 1
+      ) pr ON true
       WHERE u.deleted_at IS NULL
         AND (p_search IS NULL OR p_search = '' OR u.full_name ILIKE '%'||p_search||'%' OR u.email ILIKE '%'||p_search||'%')
         AND (p_city IS NULL OR p_city = '' OR u.city = p_city)
+        -- Rango exacto/abierto por edad (prioritario si viene min o max).
         AND (
-          coalesce(p_age_band,'all') = 'all'
-          OR (p_age_band = 'none'  AND u.age IS NULL)
-          OR (p_age_band = '18-24' AND u.age BETWEEN 18 AND 24)
-          OR (p_age_band = '25-34' AND u.age BETWEEN 25 AND 34)
-          OR (p_age_band = '35-44' AND u.age BETWEEN 35 AND 44)
-          OR (p_age_band = '45-54' AND u.age BETWEEN 45 AND 54)
-          OR (p_age_band = '55+'   AND u.age >= 55)
+          NOT v_use_range
+          OR (u.age IS NOT NULL
+              AND (p_age_min IS NULL OR u.age >= p_age_min)
+              AND (p_age_max IS NULL OR u.age <= p_age_max))
+        )
+        -- Bandas predefinidas (sólo si no se usa rango explícito).
+        AND (
+          v_use_range
+          OR coalesce(p_age_band,'all') = 'all'
+          OR (p_age_band = 'none'    AND u.age IS NULL)
+          OR (p_age_band = 'under18' AND u.age < 18)
+          OR (p_age_band = '18-24'   AND u.age BETWEEN 18 AND 24)
+          OR (p_age_band = '25-34'   AND u.age BETWEEN 25 AND 34)
+          OR (p_age_band = '35-44'   AND u.age BETWEEN 35 AND 44)
+          OR (p_age_band = '45-54'   AND u.age BETWEEN 45 AND 54)
+          OR (p_age_band = '55+'     AND u.age >= 55)
         )
     ),
     counted AS (SELECT count(*) AS c FROM base),
@@ -229,10 +258,41 @@ BEGIN
   );
 END $$;
 
+-- G) Preferencias de categorías: qué tipo de empleos guarda más la gente como
+--    preferencia (onboarding / alertas). Agrega user_job_preferences.categories,
+--    resuelve la etiqueta legible y calcula % sobre los usuarios con preferencias.
+CREATE OR REPLACE FUNCTION public.admin_preference_analytics()
+ RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $$
+DECLARE res jsonb; v_total bigint; v_notify bigint;
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'No autorizado'; END IF;
+  -- Usuarios que guardaron al menos una categoría como preferencia.
+  SELECT count(*) INTO v_total  FROM user_job_preferences WHERE coalesce(array_length(categories, 1), 0) > 0;
+  SELECT count(*) INTO v_notify FROM user_job_preferences WHERE notify = true AND coalesce(array_length(categories, 1), 0) > 0;
+  SELECT jsonb_build_object(
+    'totalUsers',  v_total,
+    'notifyUsers', v_notify,
+    'byCategory', coalesce((
+      SELECT jsonb_agg(jsonb_build_object('label', label, 'users', n, 'pct', pct) ORDER BY n DESC)
+      FROM (
+        SELECT coalesce(jc.label, cat) AS label,
+               count(DISTINCT p.user_id) AS n,
+               CASE WHEN v_total > 0 THEN round(count(DISTINCT p.user_id)::numeric / v_total * 100, 1) ELSE 0 END AS pct
+        FROM user_job_preferences p, unnest(p.categories) AS cat
+        LEFT JOIN job_categories jc ON jc.id = cat
+        GROUP BY coalesce(jc.label, cat)
+      ) s
+    ), '[]'::jsonb)
+  ) INTO res;
+  RETURN res;
+END $$;
+
 -- Permisos: ejecutables por usuarios autenticados (el guard interno exige admin).
 GRANT EXECUTE ON FUNCTION public.admin_geo_analytics()          TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_usage_intensity()        TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_search_insights(int)     TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_supply_analytics(int)    TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_preference_analytics()   TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_user_cities()            TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_users_list(text,text,text,text,text,int,int) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_users_list(text,text,text,text,text,int,int,int,int) TO authenticated;

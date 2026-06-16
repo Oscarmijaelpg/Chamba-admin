@@ -1,11 +1,13 @@
 import React from 'react';
 import {
   X, Shield, ShieldAlert, ShieldCheck, MapPin,
-  Star, Briefcase, Wallet, Calendar, Mail, User, Trash2, Cake
+  Star, Briefcase, Wallet, Calendar, Mail, User, Trash2, Cake, Tag, Bell, BellOff
 } from 'lucide-react';
 
 export default function UserDetailModal({ user, onClose, onBan, onUnban, onDelete }) {
   if (!user) return null;
+
+  const preferences = Array.isArray(user.preferences) ? user.preferences : [];
 
   const joinedDate = user.created_at
     ? new Date(user.created_at).toLocaleDateString('es-BO', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -73,6 +75,33 @@ export default function UserDetailModal({ user, onClose, onBan, onUnban, onDelet
             <InfoCard icon={<Star size={14} />} label="Rating" value={`${user.rating?.toFixed(1) || '0.0'} ★`} />
             <InfoCard icon={<Briefcase size={14} />} label="Trabajos" value={user.jobs_completed || 0} />
             <InfoCard icon={<Calendar size={14} />} label="Registrado" value={joinedDate} />
+          </div>
+
+          {/* Categorías guardadas como preferencia */}
+          <div className="bg-slate-50 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <Tag size={14} />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Categorías de interés</span>
+              </div>
+              {preferences.length > 0 && (
+                <span className={`flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${user.pref_notify ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
+                  {user.pref_notify ? <Bell size={10} /> : <BellOff size={10} />}
+                  {user.pref_notify ? 'Alertas on' : 'Alertas off'}
+                </span>
+              )}
+            </div>
+            {preferences.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {preferences.map((p) => (
+                  <span key={p} className="text-[11px] font-medium text-primary-700 bg-primary-100 px-2 py-1 rounded-lg">
+                    {p}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">No guardó preferencias de categorías.</p>
+            )}
           </div>
         </div>
 

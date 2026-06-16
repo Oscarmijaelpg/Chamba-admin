@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useUsers } from '../hooks/useUsers';
-import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2, Cake, Clock } from 'lucide-react';
+import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2, Cake, Clock, Tag } from 'lucide-react';
 import { relTime } from '../lib/activity';
 import ConfirmModal from './ConfirmModal';
 import UserDetailModal from './UserDetailModal';
@@ -18,13 +18,14 @@ const SORT_OPTIONS = [
 ];
 
 const AGE_BANDS = [
-  { value: 'all',   label: 'Todas las edades' },
-  { value: '18-24', label: '18 – 24 años' },
-  { value: '25-34', label: '25 – 34 años' },
-  { value: '35-44', label: '35 – 44 años' },
-  { value: '45-54', label: '45 – 54 años' },
-  { value: '55+',   label: '55+ años' },
-  { value: 'none',  label: 'Sin edad' },
+  { value: 'all',     label: 'Todas las edades' },
+  { value: 'under18', label: 'Menores de 18' },
+  { value: '18-24',   label: '18 – 24 años' },
+  { value: '25-34',   label: '25 – 34 años' },
+  { value: '35-44',   label: '35 – 44 años' },
+  { value: '45-54',   label: '45 – 54 años' },
+  { value: '55+',     label: '55+ años' },
+  { value: 'none',    label: 'Sin edad' },
 ];
 
 const lastSeenLabel = (iso) => (iso ? relTime(iso) : 'Nunca');
@@ -33,8 +34,17 @@ export default function UsersTable() {
   const {
     users, loading, isFetching, setBanned, deleteUser,
     search, setSearch, page, setPage, totalPages, total, pageSize,
-    city, setCity, ageBand, setAgeBand, sort, setSort, dir, setDir, cities,
+    city, setCity, ageBand, setAgeBand, ageMin, setAgeMin, ageMax, setAgeMax,
+    sort, setSort, dir, setDir, cities,
   } = useUsers();
+
+  const hasAgeRange = ageMin !== '' || ageMax !== '';
+
+  // Banda y rango son mutuamente excluyentes: elegir uno limpia el otro.
+  const onBandChange = (v) => { setAgeBand(v); setAgeMin(''); setAgeMax(''); };
+  const onAgeMinChange = (v) => { setAgeMin(v); if (v !== '') setAgeBand('all'); };
+  const onAgeMaxChange = (v) => { setAgeMax(v); if (v !== '') setAgeBand('all'); };
+  const clearFilters = () => { setCity(''); setAgeBand('all'); setAgeMin(''); setAgeMax(''); };
   const [selectedUser, setSelectedUser] = useState(null);
   const [confirmState, setConfirmState] = useState({ open: false, user: null, action: null });
   const [actionLoading, setActionLoading] = useState(false);
@@ -127,9 +137,27 @@ export default function UsersTable() {
           {cities.map((c) => <option key={c} value={c}>{c}</option>)}
         </FilterSelect>
 
-        <FilterSelect label="Edad" value={ageBand} onChange={setAgeBand}>
+        <FilterSelect label="Edad" value={hasAgeRange ? 'all' : ageBand} onChange={onBandChange}>
           {AGE_BANDS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
         </FilterSelect>
+
+        {/* Edad exacta o rango (desde–hasta). Igual desde y hasta = edad exacta. */}
+        <div className="flex items-center gap-1.5 bg-white rounded-xl border border-slate-200 pl-3 pr-2 py-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Edad exacta / rango</span>
+          <input
+            type="number" min="0" max="120" inputMode="numeric" placeholder="desde"
+            value={ageMin}
+            onChange={(e) => onAgeMinChange(e.target.value)}
+            className="w-14 bg-transparent text-sm font-medium text-slate-700 focus:outline-none placeholder:text-slate-300"
+          />
+          <span className="text-slate-300">–</span>
+          <input
+            type="number" min="0" max="120" inputMode="numeric" placeholder="hasta"
+            value={ageMax}
+            onChange={(e) => onAgeMaxChange(e.target.value)}
+            className="w-14 bg-transparent text-sm font-medium text-slate-700 focus:outline-none placeholder:text-slate-300"
+          />
+        </div>
 
         <FilterSelect
           label="Ordenar"
@@ -139,9 +167,9 @@ export default function UsersTable() {
           {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </FilterSelect>
 
-        {(city || ageBand !== 'all') && (
+        {(city || ageBand !== 'all' || hasAgeRange) && (
           <button
-            onClick={() => { setCity(''); setAgeBand('all'); }}
+            onClick={clearFilters}
             className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-2 py-1.5"
           >
             Limpiar filtros
@@ -206,6 +234,7 @@ export default function UsersTable() {
                           <div className="min-w-0">
                             <p className="font-bold text-slate-800 text-sm truncate">{user.full_name}</p>
                             <p className="text-xs text-slate-400 truncate max-w-[180px]">{user.email}</p>
+                            <PreferenceChips preferences={user.preferences} max={2} className="mt-1" />
                           </div>
                         </div>
                       </td>
@@ -369,6 +398,9 @@ function UserCard({ user, onView, onBan, onUnban, onDelete }) {
         </span>
       </div>
 
+      {/* Preferencias de categorías guardadas */}
+      <PreferenceChips preferences={user.preferences} max={4} />
+
       {/* Footer */}
       <div className="flex items-center justify-between pt-1 border-t border-slate-50">
         <StatusBadges user={user} />
@@ -399,6 +431,28 @@ function UserCard({ user, onView, onBan, onUnban, onDelete }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Chips compactos con las categorías que el usuario guardó como preferencia.
+// `max` limita cuántas se muestran; el resto se resume en "+N".
+function PreferenceChips({ preferences, max = 3, className = '' }) {
+  const list = Array.isArray(preferences) ? preferences : [];
+  if (list.length === 0) return null;
+  const shown = list.slice(0, max);
+  const rest = list.length - shown.length;
+  return (
+    <div className={`flex flex-wrap items-center gap-1 ${className}`}>
+      <Tag size={10} className="text-primary-400 shrink-0" />
+      {shown.map((p) => (
+        <span key={p} className="text-[10px] font-medium text-primary-700 bg-primary-50 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+          {p}
+        </span>
+      ))}
+      {rest > 0 && (
+        <span className="text-[10px] font-semibold text-slate-400" title={list.join(', ')}>+{rest}</span>
+      )}
     </div>
   );
 }

@@ -5,11 +5,13 @@ import {
 } from 'recharts';
 import {
   MapPin, Eye, Search, Repeat, Users, Building2, Layers, TrendingUp, Ruler, AlertTriangle,
+  Tag, Bell, Heart,
 } from 'lucide-react';
 import { useGeoAnalytics } from '../hooks/useGeoAnalytics';
 import { useUsageIntensity } from '../hooks/useUsageIntensity';
 import { useSearchInsights } from '../hooks/useSearchInsights';
 import { useSupplyAnalytics } from '../hooks/useSupplyAnalytics';
+import { usePreferenceAnalytics } from '../hooks/usePreferenceAnalytics';
 import InfoTip from './InfoTip';
 
 const Card = ({ children, className = '' }) => (
@@ -42,9 +44,11 @@ export default function PlatformInsights() {
   const usage = useUsageIntensity();
   const search = useSearchInsights(30);
   const supply = useSupplyAnalytics(30);
+  const prefs = usePreferenceAnalytics();
 
   const usersByCity = geo.byCity.filter((c) => c.city !== 'Sin ciudad');
   const topCategories = supply.byCategory.slice(0, 12);
+  const topPreferences = prefs.byCategory.slice(0, 12);
 
   return (
     <div className="space-y-10">
@@ -227,6 +231,52 @@ export default function PlatformInsights() {
               <Line yAxisId="right" type="monotone" name="Vistas" dataKey="vistas" stroke="#3B82F6" strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
+        </Card>
+      </section>
+
+      {/* ===================== PREFERENCIAS / DEMANDA ===================== */}
+      <section className="space-y-4">
+        <div>
+          <h3 className="text-lg font-bold text-slate-800">Preferencias de categorías</h3>
+          <p className="text-sm text-slate-500">Qué tipo de empleos guarda más la gente como preferencia (onboarding y alertas).</p>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Kpi title="Usuarios con preferencias" value={prefs.loading ? '…' : prefs.totalUsers.toLocaleString()}
+            icon={Heart} color="bg-pink-500"
+            tip="Usuarios que guardaron al menos una categoría como preferencia." />
+          <Kpi title="Con alertas activas" value={prefs.loading ? '…' : prefs.notifyUsers.toLocaleString()}
+            icon={Bell} color="bg-primary-500"
+            sub={prefs.loading || prefs.totalUsers === 0 ? '' : `${Math.round((prefs.notifyUsers / prefs.totalUsers) * 100)}% de los que tienen preferencias`}
+            tip="Usuarios con preferencias que además activaron las notificaciones de nuevas chambas." />
+          <Kpi title="Categoría más buscada" value={prefs.loading ? '…' : (topPreferences[0]?.label ?? '—')}
+            icon={Tag} color="bg-violet-500"
+            sub={prefs.loading || !topPreferences[0] ? '' : `${topPreferences[0].pct}% de los usuarios`} />
+          <Kpi title="Categorías distintas" value={prefs.loading ? '…' : prefs.byCategory.length}
+            icon={Layers} color="bg-amber-500" sub="con al menos un interesado" />
+        </div>
+
+        <Card>
+          <h4 className="font-bold text-slate-800 mb-1 flex items-center gap-2">
+            <Tag size={16} className="text-primary-500" /> Top categorías guardadas como preferencia
+            <InfoTip text="Cuántos usuarios guardaron cada categoría como preferencia. Compáralo con la oferta de empleos: una categoría muy deseada pero con poca oferta abierta es una oportunidad de inventario." />
+          </h4>
+          <p className="text-xs text-slate-400 mb-4">Usuarios interesados por categoría (% sobre los que guardaron preferencias)</p>
+          {topPreferences.length > 0 ? (
+            <ResponsiveContainer width="100%" height={Math.max(220, topPreferences.length * 30)}>
+              <BarChart data={topPreferences} layout="vertical" margin={{ left: 12, right: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="label" width={140} tick={{ fontSize: 10 }} />
+                <Tooltip cursor={{ fill: '#f8fafc' }} formatter={(v, _n, p) => [`${v} usuarios (${p.payload.pct}%)`, 'Interesados']} />
+                <Bar dataKey="users" fill="#EC4899" radius={[0, 4, 4, 0]}>
+                  {topPreferences.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-slate-400 text-sm">Aún no hay preferencias guardadas.</p>
+          )}
         </Card>
       </section>
     </div>

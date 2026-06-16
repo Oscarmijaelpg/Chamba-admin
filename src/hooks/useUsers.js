@@ -10,10 +10,15 @@ export function useUsers() {
   const qc = useQueryClient();
   const [searchInput, setSearchInput] = useState('');
   const [city, setCity] = useState('');        // '' = todas
-  const [ageBand, setAgeBand] = useState('all'); // all | 18-24 | 25-34 | 35-44 | 45-54 | 55+ | none
+  const [ageBand, setAgeBand] = useState('all'); // all | under18 | 18-24 | 25-34 | 35-44 | 45-54 | 55+ | none
+  const [ageMin, setAgeMin] = useState('');    // '' = sin límite inferior (rango exacto/abierto)
+  const [ageMax, setAgeMax] = useState('');    // '' = sin límite superior
   const [sort, setSort] = useState('created_at'); // created_at | last_seen | age | full_name
   const [dir, setDir] = useState('desc');          // asc | desc
   const search = useDebounce(searchInput, 350);
+  // Rango explícito (edad exacta o tramo): tiene prioridad sobre la banda en el RPC.
+  const ageMinNum = ageMin === '' ? null : Number(ageMin);
+  const ageMaxNum = ageMax === '' ? null : Number(ageMax);
 
   // Ciudades disponibles para el dropdown de filtro (cacheadas 10 min).
   const { data: cities = [] } = useQuery({
@@ -31,7 +36,7 @@ export function useUsers() {
   // por "última conexión" exige el join con analytics_events, hecho en Postgres.
   const paged = usePagedQuery({
     key: KEY,
-    deps: [search, city, ageBand, sort, dir],
+    deps: [search, city, ageBand, ageMinNum, ageMaxNum, sort, dir],
     queryFn: async ({ from, to }) => {
       const { data, error } = await supabase.rpc('admin_users_list', {
         p_search: search || null,
@@ -41,6 +46,8 @@ export function useUsers() {
         p_dir: dir,
         p_limit: to - from + 1,
         p_offset: from,
+        p_age_min: Number.isFinite(ageMinNum) ? ageMinNum : null,
+        p_age_max: Number.isFinite(ageMaxNum) ? ageMaxNum : null,
       });
       if (error) throw error;
       return { rows: data?.rows ?? [], total: data?.total ?? 0 };
@@ -100,6 +107,8 @@ export function useUsers() {
     setSearch: setSearchInput,
     city, setCity,
     ageBand, setAgeBand,
+    ageMin, setAgeMin,
+    ageMax, setAgeMax,
     sort, setSort,
     dir, setDir,
     cities,
