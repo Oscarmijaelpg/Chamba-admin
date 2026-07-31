@@ -10,7 +10,6 @@ import {
   Bell,
   AlertTriangle,
   Shield,
-  CreditCard,
   TrendingUp,
   Scale,
   Menu,
@@ -31,7 +30,6 @@ const SettingsView = lazy(() => import('./components/SettingsView'));
 const ReportsView = lazy(() => import('./components/ReportsView'));
 const DisputesView = lazy(() => import('./components/DisputesView'));
 const AuditLogsView = lazy(() => import('./components/AuditLogsView'));
-const PricingView = lazy(() => import('./components/PricingView'));
 const JobsTable = lazy(() => import('./components/JobsTable'));
 const AnalyticsCharts = lazy(() => import('./components/AnalyticsCharts'));
 const ProjectAnalytics = lazy(() => import('./components/ProjectAnalytics'));
@@ -58,7 +56,6 @@ const NAV_ITEMS = [
   { path: '/audit',      icon: Shield,          label: 'Auditoría' },
   { path: '/analytics',  icon: TrendingUp,      label: 'Analytics' },
   { path: '/alerts',     icon: Bell,            label: 'Alertas' },
-  { path: '/pricing',    icon: CreditCard,      label: 'Precios' },
   { path: '/settings',   icon: Settings,        label: 'Ajustes' },
 ];
 
@@ -236,7 +233,6 @@ export default function App() {
               <AlertsConfig />
             </div>
           } />
-          <Route path="/pricing" element={<PricingView />} />
           <Route path="/settings" element={<SettingsView />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

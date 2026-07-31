@@ -38,6 +38,16 @@ export function useFinance(filter = 'all') {
     },
   });
 
+  // Resumen financiero para KPIs y gráficos (RPC admin_wallet_summary).
+  const summaryQuery = useQuery({
+    queryKey: [...KEY, 'summary'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_wallet_summary');
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const patchRow = (id, fields) =>
     qc.setQueriesData({ queryKey: KEY }, (old) =>
       old?.rows ? { ...old, rows: old.rows.map((t) => (t.id === id ? { ...t, ...fields } : t)) } : old
@@ -55,15 +65,47 @@ export function useFinance(filter = 'all') {
       return { snapshot };
     },
     onError: (_e, _v, ctx) => ctx?.snapshot?.forEach(([k, d]) => qc.setQueryData(k, d)),
-    onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+    },
+  });
+
+  // Recarga manual de saldo a un usuario (RPC admin_credit_wallet, atómica).
+  const creditMutation = useMutation({
+    mutationFn: async ({ userId, amount, reason }) => {
+      const { data, error } = await supabase.rpc('admin_credit_wallet', {
+        p_user_id: userId, p_amount: amount, p_reason: reason ?? null,
+      });
+      if (error) throw error;
+      if (data && data.ok === false) throw new Error(data.code || 'No se pudo recargar');
+      return data;
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+    },
   });
 
   const approveTransaction = (id) => statusMutation.mutate({ id, status: 'completed' });
   const rejectTransaction = (id) => statusMutation.mutate({ id, status: 'cancelled' });
+  const creditWallet = (userId, amount, reason) => creditMutation.mutateAsync({ userId, amount, reason });
+
+  // Búsqueda de usuarios para la recarga (nombre o email).
+  const searchUsers = async (term) => {
+    const t = (term ?? '').trim();
+    if (t.length < 2) return [];
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, full_name, email, wallet_balance')
+      .or(`full_name.ilike.%${t}%,email.ilike.%${t}%`)
+      .limit(8);
+    if (error) return [];
+    return data ?? [];
+  };
 
   return {
     transactions: paged.rows,
     pendingWithdrawals: withdrawalsQuery.data ?? [],
+    summary: summaryQuery.data ?? null,
     loading: paged.loading,
     isFetching: paged.isFetching,
     error: paged.error,
@@ -74,5 +116,8 @@ export function useFinance(filter = 'all') {
     pageSize: paged.pageSize,
     approveTransaction,
     rejectTransaction,
+    creditWallet,
+    crediting: creditMutation.isPending,
+    searchUsers,
   };
 }
