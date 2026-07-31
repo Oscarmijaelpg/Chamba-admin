@@ -4,19 +4,22 @@ import { usePagedQuery } from './usePagedQuery';
 
 const KEY = ['wallet_transactions'];
 
-export function useFinance(filter = 'all') {
+// `view` combina tipo + estado en un solo filtro simple:
+//   'all' · 'pending' (por aprobar) · o un tipo (deposit/withdrawal/payout/commission).
+export function useFinance(view = 'all') {
   const qc = useQueryClient();
 
   const paged = usePagedQuery({
     key: KEY,
-    deps: [filter],
+    deps: [view],
     queryFn: async ({ from, to }) => {
       let q = supabase
         .from('wallet_transactions')
         .select('*, users(full_name, email)', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
-      if (filter !== 'all') q = q.eq('status', filter);
+      if (view === 'pending') q = q.eq('status', 'pending');
+      else if (view !== 'all') q = q.eq('type', view);
       const { data, count, error } = await q;
       if (error) throw error;
       return { rows: data ?? [], total: count ?? 0 };
