@@ -42,16 +42,23 @@ export default function SettingsView() {
           <div className="space-y-4 pt-2">
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Monto Mínimo de Retiro (Bs.)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 font-bold"
                 value={settings.min_withdrawal}
                 onChange={(e) => setSettings({...settings, min_withdrawal: e.target.value})}
               />
             </div>
-            <div className="p-4 bg-primary-50 rounded-xl">
-              <p className="text-xs text-primary-700 font-medium">💡 Modelo de ingresos: Planes Premium</p>
-              <p className="text-[10px] text-primary-600 mt-1">Los usuarios pagan por publicar o por planes premium. No hay comisión por transacción.</p>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Comisión sobre pagos en custodia (%)</label>
+              <input
+                type="number"
+                min="0" max="100" step="0.5"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 font-bold"
+                value={settings.commission_rate ?? 10}
+                onChange={(e) => setSettings({...settings, commission_rate: e.target.value === '' ? '' : Number(e.target.value)})}
+              />
+              <p className="text-[10px] text-slate-400 mt-2">Se descuenta del pago al trabajador cuando la chamba se paga con billetera Conecta2 (pago protegido). No aplica a pagos externos (QR/Binance).</p>
             </div>
           </div>
         </div>

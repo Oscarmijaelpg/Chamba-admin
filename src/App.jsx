@@ -12,6 +12,7 @@ import {
   Shield,
   CreditCard,
   TrendingUp,
+  Scale,
   Menu,
   X
 } from 'lucide-react';
@@ -28,6 +29,7 @@ const ChambasTable = lazy(() => import('./components/ChambasTable'));
 const FinanceView = lazy(() => import('./components/FinanceView'));
 const SettingsView = lazy(() => import('./components/SettingsView'));
 const ReportsView = lazy(() => import('./components/ReportsView'));
+const DisputesView = lazy(() => import('./components/DisputesView'));
 const AuditLogsView = lazy(() => import('./components/AuditLogsView'));
 const PricingView = lazy(() => import('./components/PricingView'));
 const JobsTable = lazy(() => import('./components/JobsTable'));
@@ -51,6 +53,7 @@ const NAV_ITEMS = [
   { path: '/chambas',    icon: Briefcase,       label: 'Chambas' },
   { path: '/jobs',       icon: Briefcase,       label: 'Trabajos' },
   { path: '/wallet',     icon: Wallet,          label: 'Finanzas' },
+  { path: '/disputas',   icon: Scale,           label: 'Disputas' },
   { path: '/reports',    icon: AlertTriangle,   label: 'Reportes' },
   { path: '/audit',      icon: Shield,          label: 'Auditoría' },
   { path: '/analytics',  icon: TrendingUp,      label: 'Analytics' },
@@ -204,6 +207,7 @@ export default function App() {
           <Route path="/chambas" element={<ChambasTable />} />
           <Route path="/jobs" element={<JobsTable />} />
           <Route path="/wallet" element={<FinanceView />} />
+          <Route path="/disputas" element={<DisputesView />} />
           <Route path="/reports" element={<ReportsView />} />
           <Route path="/audit" element={<AuditLogsView />} />
           <Route path="/activity" element={<ActivityView />} />

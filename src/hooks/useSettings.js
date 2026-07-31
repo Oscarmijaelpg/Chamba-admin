@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 
 const DEFAULTS = {
   min_withdrawal: 50,
+  // Comisión (%) que cobra la app sobre los pagos por billetera en custodia.
+  commission_rate: 10,
   app_name: 'Chamba App',
   maintenance_mode: false,
   announcement: '',
