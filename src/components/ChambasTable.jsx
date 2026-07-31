@@ -1,125 +1,214 @@
-import React from 'react';
-import { Search, MapPin, Trash2, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, MapPin, Briefcase, ChevronRight, ShieldCheck, Globe, User, Calendar, Coins, Loader2 } from 'lucide-react';
 import { useChambas } from '../hooks/useChambas';
+import ChambaDetailModal from './ChambaDetailModal';
+import ConfirmModal from './ConfirmModal';
 import Pagination from './Pagination';
+
+const money = (n) => `Bs. ${Number(n ?? 0).toLocaleString('es-BO')}`;
+
+const STATUS_COLOR = {
+  open: 'bg-green-50 text-green-600', in_progress: 'bg-blue-50 text-blue-600',
+  completed: 'bg-slate-100 text-slate-600', cancelled: 'bg-red-50 text-red-500', deleted: 'bg-slate-100 text-slate-400',
+};
+const STATUS_LABEL = {
+  open: 'Abierta', in_progress: 'En progreso', completed: 'Finalizada', cancelled: 'Cancelada', deleted: 'Borrada',
+};
+
+function StatusBadge({ status }) {
+  return (
+    <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap ${STATUS_COLOR[status] ?? 'bg-slate-50 text-slate-400'}`}>
+      {STATUS_LABEL[status] ?? status}
+    </span>
+  );
+}
+
+function PayBadge({ chamba }) {
+  return chamba.payment_method === 'internal' ? (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-600 whitespace-nowrap">
+      <ShieldCheck size={11} /> Protegido
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500 whitespace-nowrap">
+      <Globe size={11} /> Externo
+    </span>
+  );
+}
+
+const Kpi = ({ title, value, icon: Icon, color, sub }) => (
+  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+    <div className="flex justify-between items-start gap-2">
+      <div className="min-w-0">
+        <p className="text-slate-500 text-xs font-medium leading-tight">{title}</p>
+        <h3 className="text-xl sm:text-2xl font-bold mt-1.5 text-slate-800 truncate">{value}</h3>
+        {sub && <p className="text-[10px] text-slate-400 mt-0.5 truncate">{sub}</p>}
+      </div>
+      <div className={`p-2.5 rounded-xl shrink-0 ${color}`}>
+        <Icon size={18} className="text-white" />
+      </div>
+    </div>
+  </div>
+);
 
 export default function ChambasTable() {
   const {
-    chambas, loading, isFetching, updateStatus, deleteChamba,
-    search, setSearch, page, setPage, totalPages, total, pageSize,
+    chambas, loading, isFetching, updateChamba, deleteChamba, stats, cities,
+    page, setPage, totalPages, pageTotal, pageSize,
+    search, setSearch, status: statusFilter, setStatus, city: cityFilter, setCity,
   } = useChambas();
 
-  const handleStatusChange = (id, newStatus) => updateStatus(id, newStatus);
+  const [selected, setSelected] = useState(null);
+  const [confirm, setConfirm] = useState({ open: false, id: null });
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const handleDelete = async (id) => {
-    if (confirm('¿Estás seguro de que quieres eliminar esta chamba? Esta acción no se puede deshacer.')) {
-      await deleteChamba(id);
-    }
-  };
-
-  // Búsqueda y paginación resueltas en el servidor (hook useChambas).
-  const filteredChambas = chambas;
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'open': return 'bg-primary-50 text-primary-600';
-      case 'in_progress': return 'bg-primary-50 text-primary-700';
-      case 'completed': return 'bg-slate-100 text-slate-600';
-      case 'cancelled': return 'bg-red-50 text-red-600';
-      default: return 'bg-slate-50 text-slate-400';
-    }
+  const handleDelete = async () => {
+    setActionLoading(true);
+    await deleteChamba(confirm.id);
+    setActionLoading(false);
+    setConfirm({ open: false, id: null });
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <h2 className="text-2xl font-bold text-slate-800">Moderación de Chambas</h2>
-        <div className="relative w-full sm:w-72 sm:ml-auto">
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-800">Gestión de Chambas</h2>
+        <p className="text-slate-400 text-sm mt-0.5">{pageTotal.toLocaleString()} de {stats.total.toLocaleString()} chambas</p>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Kpi title="Total" value={stats.total} icon={Briefcase} color="bg-primary-600" sub={`${stats.completed} finalizadas`} />
+        <Kpi title="Abiertas" value={stats.open} icon={Search} color="bg-green-500" />
+        <Kpi title="En progreso" value={stats.in_progress} icon={Loader2} color="bg-blue-500" sub={`${stats.cancelled} canceladas`} />
+        <Kpi title="En custodia" value={money(stats.escrow_held)} icon={Coins} color="bg-emerald-500" sub={`${stats.protected} con pago protegido`} />
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-col gap-3">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input
             type="text"
             placeholder="Buscar por título o descripción..."
-            className="w-full pl-10 pr-4 py-2 bg-white rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <select className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-0" value={statusFilter} onChange={(e) => setStatus(e.target.value)}>
+            <option value="all">Todos los estados</option>
+            <option value="open">Abiertas</option>
+            <option value="in_progress">En progreso</option>
+            <option value="completed">Finalizadas</option>
+            <option value="cancelled">Canceladas</option>
+            <option value="deleted">Borradas</option>
+          </select>
+          <select className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-0" value={cityFilter} onChange={(e) => setCity(e.target.value)}>
+            <option value="all">Todas las ciudades</option>
+            {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {loading ? (
-          <div className="text-center py-20 text-slate-400">Cargando chambas...</div>
-        ) : filteredChambas.length === 0 ? (
-          <div className="text-center py-20 text-slate-400">No se encontraron chambas</div>
-        ) : filteredChambas.map((chamba) => (
-          <div key={chamba.id} className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-4 sm:gap-6 hover:border-primary-200 transition-all">
-            <div className="w-full sm:w-24 h-40 sm:h-24 rounded-xl bg-slate-50 overflow-hidden shrink-0 border border-slate-100">
-              {chamba.images && chamba.images[0] ? (
-                <img src={chamba.images[0]} alt={chamba.title} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-300">
-                  <MapPin size={24} />
-                </div>
-              )}
-            </div>
-            
-            <div className="flex-1">
-              <div className="flex flex-wrap justify-between items-start gap-2">
-                <div className="min-w-0">
-                  <h3 className="font-bold text-slate-800 text-lg truncate">{chamba.title}</h3>
-                  <p className="text-xs text-slate-400 mt-1 uppercase font-bold tracking-wider">Por: {chamba.employer?.full_name}</p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <select
-                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border-none focus:ring-0 cursor-pointer ${getStatusColor(chamba.status)}`}
-                    value={chamba.status}
-                    onChange={(e) => handleStatusChange(chamba.id, e.target.value)}
-                  >
-                    <option value="open">Abierta</option>
-                    <option value="in_progress">En Progreso</option>
-                    <option value="completed">Finalizada</option>
-                    <option value="cancelled">Cancelada</option>
-                  </select>
-                  <p className="text-xl font-black text-primary-600 whitespace-nowrap">Bs. {chamba.price_min}</p>
-                </div>
-              </div>
-              
-              <p className="text-slate-500 text-sm mt-3 line-clamp-2 leading-relaxed">
-                {chamba.description}
-              </p>
-              
-              <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-50">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1 text-slate-400 text-xs">
-                    <MapPin size={12} /> {chamba.city} {chamba.is_virtual && '(Virtual)'}
+      {/* Loading / vacío */}
+      {loading && (
+        <div className="flex items-center justify-center gap-3 py-20 text-slate-400">
+          <div className="w-6 h-6 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm">Cargando chambas...</span>
+        </div>
+      )}
+      {!loading && chambas.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Briefcase size={40} className="text-slate-200" />
+          <p className="text-sm font-medium text-slate-400">No hay chambas con esos filtros</p>
+        </div>
+      )}
+
+      {!loading && chambas.length > 0 && (
+        <>
+          {/* MOBILE: cards */}
+          <div className="md:hidden space-y-3">
+            {chambas.map((c) => (
+              <button key={c.id} onClick={() => setSelected(c)} className="w-full text-left bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3 hover:border-primary-200 hover:shadow-md transition-all active:scale-[0.99]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-800 leading-tight truncate">{c.title}</p>
+                    {c.description && <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">{c.description}</p>}
                   </div>
-                  <div className="text-slate-300 text-xs">|</div>
-                  <div className="text-slate-400 text-xs">
-                    Publicado el {new Date(chamba.created_at).toLocaleDateString()}
+                  <div className="shrink-0 flex flex-col items-end gap-2">
+                    <StatusBadge status={c.status} />
+                    <ChevronRight size={14} className="text-slate-300" />
                   </div>
                 </div>
-                
-                <div className="flex gap-2">
-                  <button className="p-2 text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-all" title="Ver detalles">
-                    <ExternalLink size={18} />
-                  </button>
-                  <button onClick={() => handleDelete(chamba.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Eliminar">
-                    <Trash2 size={18} />
-                  </button>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <PayBadge chamba={c} />
+                  <span className="text-sm font-black text-primary-600">{money(c.price_min)}</span>
+                  {c.employer?.full_name && <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg"><User size={10} /> {c.employer.full_name}</span>}
+                  {c.city && <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg"><MapPin size={10} /> {c.city}</span>}
                 </div>
-              </div>
+              </button>
+            ))}
+          </div>
+
+          {/* DESKTOP: tabla */}
+          <div className="hidden md:block bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-[720px]">
+                <thead>
+                  <tr className="bg-slate-50/70 text-slate-400 text-[11px] uppercase tracking-widest font-bold">
+                    <th className="px-5 py-3.5">Chamba</th>
+                    <th className="px-5 py-3.5">Empleador</th>
+                    <th className="px-5 py-3.5">Pago</th>
+                    <th className="px-5 py-3.5">Precio</th>
+                    <th className="px-5 py-3.5">Ciudad</th>
+                    <th className="px-5 py-3.5">Estado</th>
+                    <th className="px-5 py-3.5" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {chambas.map((c) => (
+                    <tr key={c.id} onClick={() => setSelected(c)} className="hover:bg-slate-50/80 transition-all cursor-pointer">
+                      <td className="px-5 py-3.5 max-w-[240px]">
+                        <p className="font-semibold text-slate-800 truncate">{c.title}</p>
+                        <p className="text-xs text-slate-400 truncate mt-0.5">{c.description?.substring(0, 50)}…</p>
+                      </td>
+                      <td className="px-5 py-3.5"><p className="text-sm text-slate-700 font-medium truncate">{c.employer?.full_name || '-'}</p></td>
+                      <td className="px-5 py-3.5"><PayBadge chamba={c} /></td>
+                      <td className="px-5 py-3.5 text-sm font-bold text-primary-600 whitespace-nowrap">{money(c.price_min)}</td>
+                      <td className="px-5 py-3.5">
+                        <span className="flex items-center gap-1 text-sm text-slate-500"><MapPin size={12} className="text-slate-300 shrink-0" /> {c.city || '-'}</span>
+                      </td>
+                      <td className="px-5 py-3.5"><StatusBadge status={c.status} /></td>
+                      <td className="px-5 py-3.5"><ChevronRight size={16} className="text-slate-300 ml-auto" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
-      <Pagination
-        page={page}
-        totalPages={totalPages}
-        total={total}
-        pageSize={pageSize}
-        onPage={setPage}
-        isFetching={isFetching}
+      <Pagination page={page} totalPages={totalPages} total={pageTotal} pageSize={pageSize} onPage={setPage} isFetching={isFetching} />
+
+      {selected && (
+        <ChambaDetailModal
+          chamba={selected}
+          onClose={() => setSelected(null)}
+          onUpdate={updateChamba}
+          onDelete={(id) => { setConfirm({ open: true, id }); setSelected(null); }}
+        />
+      )}
+
+      <ConfirmModal
+        isOpen={confirm.open}
+        onClose={() => setConfirm({ open: false, id: null })}
+        onConfirm={handleDelete}
+        loading={actionLoading}
+        title="Borrar chamba"
+        message="La chamba dejará de mostrarse en la app (borrado lógico). No se pierde el historial de postulaciones ni pagos."
+        confirmLabel="Sí, borrar"
       />
     </div>
   );
