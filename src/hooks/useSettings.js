@@ -5,6 +5,8 @@ const DEFAULTS = {
   min_withdrawal: 50,
   // Comisión (%) que cobra la app sobre los pagos por billetera en custodia.
   commission_rate: 10,
+  // URL del QR de pago que ve el usuario al recargar (imagen en el bucket `archivos`).
+  recharge_qr_url: '',
   app_name: 'Chamba App',
   maintenance_mode: false,
   announcement: '',

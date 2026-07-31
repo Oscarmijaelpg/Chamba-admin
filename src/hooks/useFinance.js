@@ -15,7 +15,7 @@ export function useFinance(view = 'all') {
     queryFn: async ({ from, to }) => {
       let q = supabase
         .from('wallet_transactions')
-        .select('*, users(full_name, email)', { count: 'exact' })
+        .select('*, users(full_name, email, public_contact)', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
       if (view === 'pending') q = q.eq('status', 'pending');

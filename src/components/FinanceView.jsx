@@ -6,8 +6,10 @@ import {
 } from 'recharts';
 import {
   ArrowUpRight, ArrowDownLeft, CheckCircle2, XCircle, Clock, AlertTriangle,
-  Plus, Wallet, TrendingUp, PiggyBank, Search, X, Check, AlertCircle,
+  Plus, Wallet, TrendingUp, PiggyBank, Search, X, Check, AlertCircle, MessageCircle,
 } from 'lucide-react';
+
+const waLink = (num) => `https://wa.me/${String(num || '').replace(/[^0-9]/g, '')}`;
 
 const money = (n) => `Bs. ${Number(n ?? 0).toLocaleString('es-BO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
@@ -261,6 +263,12 @@ export default function FinanceView() {
                       <td className="px-6 py-4">
                         <p className="font-bold text-slate-800 text-sm">{tx.users?.full_name || '—'}</p>
                         <p className="text-xs text-slate-400">{tx.users?.email}</p>
+                        {tx.type === 'withdrawal' && tx.users?.public_contact?.whatsapp && (
+                          <a href={waLink(tx.users.public_contact.whatsapp)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-green-600 hover:underline">
+                            <MessageCircle size={11} /> {tx.users.public_contact.whatsapp}
+                          </a>
+                        )}
                       </td>
                       <td className="px-6 py-4"><span className={`font-bold ${m.cls}`}>{m.sign} {money(tx.amount)}</span></td>
                       <td className="px-6 py-4">
