@@ -2,47 +2,52 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { usePagedQuery } from './usePagedQuery';
 
-const KEY = ['chamba_reports'];
+// Feed unificado de reportes (perfil/chamba/empleo/alerta) vía RPC server-side
+// `admin_reports_list` (joins polimórficos + total, gateado por is_admin), y las
+// acciones de moderación vía `admin_resolve_report` (contrato { ok, code }).
+const KEY = ['reports'];
 
-export function useReports(filter) {
+export function useReports(status, entityType) {
   const qc = useQueryClient();
 
   const paged = usePagedQuery({
     key: KEY,
     pageSize: 15,
-    deps: [filter],
+    deps: [status, entityType],
     queryFn: async ({ from, to }) => {
-      const { data, count, error } = await supabase
-        .from('chamba_reports')
-        .select(
-          '*, reporter:users!reporter_id(full_name), chamba:chambas!chamba_id(title, status, employer_id)',
-          { count: 'exact' }
-        )
-        .eq('status', filter)
-        .order('created_at', { ascending: false })
-        .range(from, to);
+      const { data, error } = await supabase.rpc('admin_reports_list', {
+        p_status: status ?? null,
+        p_entity_type: entityType ?? null,
+        p_limit: to - from + 1,
+        p_offset: from,
+      });
       if (error) throw error;
-      return { rows: data ?? [], total: count ?? 0 };
+      return { rows: data?.rows ?? [], total: data?.total ?? 0 };
     },
   });
 
   const resolveMutation = useMutation({
-    mutationFn: async ({ reportId, chambaId, deleteChamba }) => {
-      if (deleteChamba && chambaId) {
-        const { error: delErr } = await supabase.from('chambas').delete().eq('id', chambaId);
-        if (delErr) throw delErr;
-      }
-      const { error } = await supabase.from('chamba_reports').update({ status: 'resolved' }).eq('id', reportId);
+    mutationFn: async ({ reportId, action, notify = true }) => {
+      const { data, error } = await supabase.rpc('admin_resolve_report', {
+        p_report_id: reportId,
+        p_action: action,
+        p_notify: notify,
+      });
       if (error) throw error;
+      if (data && data.ok === false) throw new Error(data.code || 'No se pudo resolver el reporte');
+      return data;
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: KEY });
       qc.invalidateQueries({ queryKey: ['chambas'] });
+      qc.invalidateQueries({ queryKey: ['jobs'] });
+      qc.invalidateQueries({ queryKey: ['users'] });
     },
   });
 
-  const resolveReport = (reportId, chambaId, deleteChamba) =>
-    resolveMutation.mutate({ reportId, chambaId, deleteChamba });
+  // Devuelve la promesa (mutateAsync) para que la vista pueda await + toast.
+  const resolveReport = (reportId, action, notify = true) =>
+    resolveMutation.mutateAsync({ reportId, action, notify });
 
   return {
     reports: paged.rows,
