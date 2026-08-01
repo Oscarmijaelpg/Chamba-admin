@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   ArrowUpRight, ArrowDownLeft, CheckCircle2, XCircle, Clock, AlertTriangle,
-  Plus, Wallet, TrendingUp, PiggyBank, Search, X, Check, AlertCircle, MessageCircle,
+  Plus, Wallet, TrendingUp, PiggyBank, Search, X, Check, AlertCircle, MessageCircle, Paperclip,
 } from 'lucide-react';
 
 const waLink = (num) => `https://wa.me/${String(num || '').replace(/[^0-9]/g, '')}`;
@@ -257,6 +257,12 @@ export default function FinanceView() {
                           <div className="min-w-0">
                             <p className="font-bold text-slate-800 text-sm">{m.label}</p>
                             {tx.description && <p className="text-[11px] text-slate-400 truncate max-w-[160px]">{tx.description}</p>}
+                            {tx.proof_url && (
+                              <a href={tx.proof_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-blue-600 hover:underline">
+                                <Paperclip size={11} /> Ver comprobante
+                              </a>
+                            )}
                           </div>
                         </div>
                       </td>
