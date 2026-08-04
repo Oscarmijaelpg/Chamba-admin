@@ -24,7 +24,6 @@ const TYPE_META = {
   publish_chamba:    { label: 'Publicar chamba', sign: '-', cls: 'text-slate-600', bg: 'bg-slate-100 text-slate-600' },
   publish_job:       { label: 'Publicar empleo', sign: '-', cls: 'text-slate-600', bg: 'bg-slate-100 text-slate-600' },
   publish_highlight: { label: 'Destacar',        sign: '-', cls: 'text-slate-600', bg: 'bg-slate-100 text-slate-600' },
-  purchase_premium:  { label: 'Premium',         sign: '-', cls: 'text-slate-600', bg: 'bg-slate-100 text-slate-600' },
 };
 const metaFor = (t) => TYPE_META[t] ?? { label: t, sign: '·', cls: 'text-slate-600', bg: 'bg-slate-100 text-slate-600' };
 

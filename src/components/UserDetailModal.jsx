@@ -57,11 +57,6 @@ export default function UserDetailModal({ user, onClose, onBan, onUnban, onDelet
                     <ShieldAlert size={10} /> Baneado
                   </span>
                 )}
-                {user.is_premium && (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-amber-100 text-amber-700">
-                    Premium
-                  </span>
-                )}
               </div>
             </div>
           </div>

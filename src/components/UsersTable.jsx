@@ -493,7 +493,7 @@ function TypeBadge({ type }) {
 }
 
 function StatusBadges({ user }) {
-  if (!user.is_banned && !user.is_admin && !user.is_premium) {
+  if (!user.is_banned && !user.is_admin) {
     return <span className="text-slate-300 text-[10px] font-bold uppercase">Activo</span>;
   }
   return (
@@ -501,11 +501,6 @@ function StatusBadges({ user }) {
       {user.is_banned && (
         <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600 uppercase whitespace-nowrap">
           <ShieldAlert size={10} /> Baneado
-        </span>
-      )}
-      {user.is_premium && (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 uppercase whitespace-nowrap">
-          Premium
         </span>
       )}
     </div>
