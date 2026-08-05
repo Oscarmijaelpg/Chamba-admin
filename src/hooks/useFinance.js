@@ -93,16 +93,23 @@ export function useFinance(view = 'all') {
   const creditWallet = (userId, amount, reason) => creditMutation.mutateAsync({ userId, amount, reason });
 
   // Búsqueda de usuarios para la recarga (nombre o email).
+  // El saldo sale de `wallets`, que es la fuente de verdad. La columna
+  // `users.wallet_balance` es solo un espejo derivado y está deprecada.
   const searchUsers = async (term) => {
     const t = (term ?? '').trim();
     if (t.length < 2) return [];
     const { data, error } = await supabase
       .from('users')
-      .select('id, full_name, email, wallet_balance')
+      .select('id, full_name, email, wallet:wallets(balance, held_balance)')
       .or(`full_name.ilike.%${t}%,email.ilike.%${t}%`)
       .limit(8);
     if (error) return [];
-    return data ?? [];
+    // El embed llega como objeto o como array según la cardinalidad que
+    // detecte PostgREST; se normaliza acá para que la vista no se entere.
+    return (data ?? []).map((u) => {
+      const w = Array.isArray(u.wallet) ? u.wallet[0] : u.wallet;
+      return { ...u, balance: w?.balance ?? 0, held_balance: w?.held_balance ?? 0 };
+    });
   };
 
   return {

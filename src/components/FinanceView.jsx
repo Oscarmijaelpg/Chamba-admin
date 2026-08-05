@@ -96,7 +96,7 @@ function RechargeModal({ onClose, onCredit, crediting, searchUsers, onToast }) {
                       <p className="text-sm font-semibold text-slate-800 truncate">{u.full_name || '—'}</p>
                       <p className="text-xs text-slate-400 truncate">{u.email}</p>
                     </div>
-                    <span className="text-xs font-bold text-slate-500 shrink-0">{money(u.wallet_balance)}</span>
+                    <span className="text-xs font-bold text-slate-500 shrink-0">{money(u.balance)}</span>
                   </button>
                 ))}
                 {term.length >= 2 && results.length === 0 && <p className="text-sm text-slate-400 text-center py-4">Sin resultados</p>}
@@ -111,7 +111,10 @@ function RechargeModal({ onClose, onCredit, crediting, searchUsers, onToast }) {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[10px] text-slate-400 uppercase font-bold">Saldo actual</p>
-                  <p className="text-sm font-bold text-slate-700">{money(picked.wallet_balance)}</p>
+                  <p className="text-sm font-bold text-slate-700">{money(picked.balance)}</p>
+                  {picked.held_balance > 0 && (
+                    <p className="text-[10px] text-amber-600 font-bold">{money(picked.held_balance)} en custodia</p>
+                  )}
                 </div>
               </div>
               <button onClick={() => setPicked(null)} className="text-xs text-primary-600 font-semibold">← Elegir otro usuario</button>
