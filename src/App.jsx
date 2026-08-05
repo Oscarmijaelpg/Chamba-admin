@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Scale,
   Link2,
+  Eye,
   Menu,
   X
 } from 'lucide-react';
@@ -39,6 +40,7 @@ const AlertsConfig = lazy(() => import('./components/AlertsConfig'));
 const AgeAnalytics = lazy(() => import('./components/AgeAnalytics'));
 const ActivityView = lazy(() => import('./components/ActivityView'));
 const TrackedLinksView = lazy(() => import('./components/TrackedLinksView'));
+const ContentViewsView = lazy(() => import('./components/ContentViewsView'));
 
 // Fallback mientras carga el chunk de la vista.
 const RouteFallback = () => (
@@ -58,6 +60,7 @@ const NAV_ITEMS = [
   { path: '/audit',      icon: Shield,          label: 'Auditoría' },
   { path: '/analytics',  icon: TrendingUp,      label: 'Analytics' },
   { path: '/enlaces',    icon: Link2,           label: 'Enlaces' },
+  { path: '/vistas',     icon: Eye,             label: 'Vistas' },
   { path: '/alerts',     icon: Bell,            label: 'Alertas' },
   { path: '/settings',   icon: Settings,        label: 'Ajustes' },
 ];
@@ -212,6 +215,7 @@ export default function App() {
           <Route path="/audit" element={<AuditLogsView />} />
           <Route path="/activity" element={<ActivityView />} />
           <Route path="/enlaces" element={<TrackedLinksView />} />
+          <Route path="/vistas" element={<ContentViewsView />} />
           <Route path="/analytics" element={
             <div className="space-y-8">
               <div>
