@@ -1,10 +1,52 @@
-import React, { useState } from 'react';
-import { Scale, Check, AlertCircle, User, Briefcase, Coins } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Scale, Check, AlertCircle, User, Briefcase, Coins, Paperclip } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { useDisputes } from '../hooks/useDisputes';
 import { useSettings } from '../hooks/useSettings';
 import Pagination from './Pagination';
 
 const money = (n) => `Bs. ${Number(n ?? 0).toLocaleString('es-BO')}`;
+
+// Pruebas que subieron las partes. Sin esto había que resolver sobre plata
+// ajena con un párrafo de texto y la palabra de cada uno.
+function Evidence({ disputeId }) {
+  const [items, setItems] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    supabase
+      .from('dispute_attachments')
+      .select('id, url, kind, note, created_at, uploader:users(full_name)')
+      .eq('dispute_id', disputeId)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => { if (active) setItems(data ?? []); });
+    return () => { active = false; };
+  }, [disputeId]);
+
+  if (items === null) return <p className="mt-3 text-xs text-slate-400">Cargando pruebas…</p>;
+  if (items.length === 0) return <p className="mt-3 text-xs text-slate-400">Sin pruebas adjuntas.</p>;
+
+  return (
+    <div className="mt-3">
+      <p className="text-xs font-bold text-slate-500 mb-2">Pruebas ({items.length})</p>
+      <div className="flex flex-wrap gap-2">
+        {items.map((it) => (
+          <a key={it.id} href={it.url} target="_blank" rel="noreferrer"
+            title={`${it.uploader?.full_name ?? 'Alguien'}${it.note ? ` — ${it.note}` : ''}`}
+            className="group relative block h-20 w-20 overflow-hidden rounded-xl border border-slate-200 hover:border-emerald-400">
+            {it.kind === 'image' ? (
+              <img src={it.url} alt={it.note ?? 'prueba'} className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-400">
+                <Paperclip size={18} />
+              </span>
+            )}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
 
 // Modal de mediación: el admin elige a dónde va el dinero congelado.
@@ -36,6 +78,11 @@ function ResolveModal({ dispute, rate, onClose, onResolve, busy }) {
           <div>
             <h3 className="font-bold text-slate-800 text-lg leading-tight">Resolver disputa</h3>
             <p className="text-slate-500 text-sm mt-1">{dispute.chamba?.title ?? 'Chamba'}</p>
+          </div>
+
+          <div className="rounded-xl bg-slate-50 p-3 border-l-2 border-slate-200">
+            <p className="text-sm text-slate-600">“{dispute.reason}”</p>
+            <Evidence disputeId={dispute.id} />
           </div>
 
           <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-xl">
@@ -184,6 +231,7 @@ export default function DisputesView() {
               </div>
 
               <p className="text-sm text-slate-600 mt-3 bg-slate-50 rounded-xl p-3 border-l-2 border-slate-200">“{dp.reason}”</p>
+              <Evidence disputeId={dp.id} />
 
               {filter === 'open' ? (
                 <div className="flex justify-end mt-4">
