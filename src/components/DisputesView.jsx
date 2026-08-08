@@ -33,42 +33,44 @@ function Evidence({ disputeId }) {
 
   if (items === null) return <p className="mt-3 text-xs text-slate-400">Cargando…</p>;
 
+  const timeline = [
+    ...msgs.map((m) => ({
+      id: `m-${m.id}`, who: m.author?.full_name ?? 'Usuario', at: m.created_at, body: m.body,
+    })),
+    ...items.map((a) => ({
+      id: `a-${a.id}`, who: a.uploader?.full_name ?? 'Usuario', at: a.created_at,
+      url: a.url, kind: a.kind, note: a.note,
+    })),
+  ].sort((a, b) => String(a.at).localeCompare(String(b.at)));
+
+  if (timeline.length === 0) return <p className="mt-3 text-xs text-slate-400">Sin descargos ni pruebas.</p>;
+
   return (
-    <div className="mt-3">
-      {msgs.length > 0 && (
-        <div className="mb-3 space-y-1.5">
-          <p className="text-xs font-bold text-slate-500">Descargos ({msgs.length})</p>
-          {msgs.map((m) => (
-            <div key={m.id} className="rounded-lg bg-white px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200">
-              <p className="text-[11px] font-bold text-slate-400">{m.author?.full_name ?? 'Usuario'}</p>
-              <p className="whitespace-pre-line">{m.body}</p>
-            </div>
-          ))}
+    <div className="mt-3 space-y-2">
+      <p className="text-xs font-bold text-slate-500">Expediente ({timeline.length})</p>
+      {timeline.map((it) => (
+        <div key={it.id} className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
+          <p className="text-[11px] font-bold text-slate-400">
+            {it.who} · {fmtDate(it.at)}
+          </p>
+          {it.body ? (
+            <p className="whitespace-pre-line text-sm text-slate-700">{it.body}</p>
+          ) : it.kind === 'image' ? (
+            <a href={it.url} target="_blank" rel="noreferrer">
+              <img src={it.url} alt={it.note ?? 'prueba'} className="mt-1 max-h-40 rounded-lg" />
+            </a>
+          ) : (
+            <a href={it.url} target="_blank" rel="noreferrer"
+              className="mt-1 inline-flex items-center gap-1.5 text-sm text-emerald-700 underline">
+              <Paperclip size={13} /> Archivo adjunto
+            </a>
+          )}
         </div>
-      )}
-      {items.length === 0 && <p className="text-xs text-slate-400">Sin pruebas adjuntas.</p>}
-      {items.length > 0 && <p className="text-xs font-bold text-slate-500 mb-2">Pruebas ({items.length})</p>}
-      <div className="flex flex-wrap gap-2">
-        {items.map((it) => (
-          <a key={it.id} href={it.url} target="_blank" rel="noreferrer"
-            title={`${it.uploader?.full_name ?? 'Alguien'}${it.note ? ` — ${it.note}` : ''}`}
-            className="group relative block h-20 w-20 overflow-hidden rounded-xl border border-slate-200 hover:border-emerald-400">
-            {it.kind === 'image' ? (
-              <img src={it.url} alt={it.note ?? 'prueba'} className="h-full w-full object-cover" />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-400">
-                <Paperclip size={18} />
-              </span>
-            )}
-          </a>
-        ))}
-      </div>
+      ))}
     </div>
   );
 }
-const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
 
-// Modal de mediación: el admin elige a dónde va el dinero congelado.
 function ResolveModal({ dispute, rate, onClose, onResolve, busy }) {
   const amount = Number(dispute.amount ?? 0);
   const [resolution, setResolution] = useState('release');
