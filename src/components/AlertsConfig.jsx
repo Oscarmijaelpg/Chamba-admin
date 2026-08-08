@@ -1,51 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, Mail, AlertTriangle, Save, Check, Send, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bell, Send, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
+import PushOptIn from './PushOptIn';
 import ConfirmModal from './ConfirmModal';
 
-export default function AlertsConfig() {
-  const [alerts, setAlerts] = useState({
-    newWithdrawal: true,
-    newReport: true,
-    suspiciousActivity: true,
-    dailySummary: true,
-  });
-  const [email, setEmail] = useState('');
-  const [saved, setSaved] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  // Broadcast push
+// Dos cosas distintas conviven acá:
+//   1. Los avisos que RECIBE el equipo en este navegador (PushOptIn).
+//   2. El broadcast que el equipo ENVÍA a todos los usuarios de la app.
+//
+// Antes había además un bloque de "Preferencias de Alertas" y un email de
+// administrador que se guardaban en localStorage y no los leía nadie: prometían
+// un control que no existía. Ahora los eventos que disparan avisos están
+// definidos en la base (triggers de notify_admins), así que se sacaron.
+export default function AlertsConfig({ userId }) {
   const { sending, result, error: sendError, sendToAll, getTokenCount } = useNotifications();
   const [pushTitle, setPushTitle] = useState('');
   const [pushBody, setPushBody] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [tokenCount, setTokenCount] = useState(null);
-
-  useEffect(() => {
-    fetchAlerts();
-  }, []);
-
-  const fetchAlerts = async () => {
-    try {
-      const stored = localStorage.getItem('admin_alerts');
-      if (stored) setAlerts(JSON.parse(stored));
-      setEmail(localStorage.getItem('admin_email') || 'admin@chamba.app');
-      setLoading(false);
-    } catch {
-      setLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    try {
-      localStorage.setItem('admin_alerts', JSON.stringify(alerts));
-      localStorage.setItem('admin_email', email);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch {
-      // localStorage inaccesible (Private Browsing sin quota)
-    }
-  };
 
   const handleOpenConfirm = async () => {
     const count = await getTokenCount();
@@ -58,68 +30,12 @@ export default function AlertsConfig() {
     await sendToAll(pushTitle, pushBody);
   };
 
-  if (loading) return <div className="text-center py-8 text-slate-500">Cargando...</div>;
-
-  const alertOptions = [
-    { key: 'newWithdrawal', label: 'Nuevas solicitudes de retiro', icon: Mail },
-    { key: 'newReport', label: 'Nuevos reportes de spam', icon: AlertTriangle },
-    { key: 'suspiciousActivity', label: 'Actividad sospechosa detectada', icon: AlertTriangle },
-    { key: 'dailySummary', label: 'Resumen diario', icon: Bell },
-  ];
-
   const canSend = pushTitle.trim() && pushBody.trim() && !sending;
 
   return (
     <div className="space-y-6">
-      {/* Email Settings */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-        <h3 className="text-lg font-bold text-slate-800 mb-4">Email de Notificaciones</h3>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Email del Administrador</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            placeholder="admin@example.com"
-          />
-        </div>
-      </div>
-
-      {/* Alert Preferences */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-        <h3 className="text-lg font-bold text-slate-800 mb-4">Preferencias de Alertas</h3>
-        <div className="space-y-4">
-          {alertOptions.map(({ key, label, icon: Icon }) => (
-            <div key={key} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition">
-              <div className="flex items-center gap-3">
-                <Icon size={20} className="text-primary-600" />
-                <label className="font-medium text-slate-800">{label}</label>
-              </div>
-              <button
-                role="switch"
-                aria-checked={alerts[key]}
-                aria-label={label}
-                onClick={() => setAlerts({ ...alerts, [key]: !alerts[key] })}
-                className={`w-12 h-6 rounded-full transition ${alerts[key] ? 'bg-primary-600' : 'bg-slate-300'}`}
-              >
-                <div className={`w-5 h-5 rounded-full bg-white transition transform ${alerts[key] ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Save Button */}
-      <button
-        onClick={handleSave}
-        className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition ${
-          saved ? 'bg-green-50 text-green-600' : 'bg-primary-600 hover:bg-primary-700 text-white'
-        }`}
-      >
-        {saved ? <Check size={20} /> : <Save size={20} />}
-        {saved ? 'Guardado' : 'Guardar Cambios'}
-      </button>
+      {/* ── Avisos que recibe el equipo ── */}
+      <PushOptIn userId={userId} />
 
       {/* ── Push Broadcast ── */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-5">

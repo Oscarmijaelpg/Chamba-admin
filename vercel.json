@@ -34,11 +34,24 @@
           "value": "1; mode=block"
         }
       ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "cache-control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "content-type",
+          "value": "application/javascript; charset=utf-8"
+        }
+      ]
     }
   ],
   "rewrites": [
     {
-      "source": "/((?!assets|api).*)",
+      "source": "/((?!assets|api|sw\\.js|manifest\\.webmanifest|icon-|apple-touch-icon).*)",
       "destination": "/index.html"
     }
   ]

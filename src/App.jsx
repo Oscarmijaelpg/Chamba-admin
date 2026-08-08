@@ -20,6 +20,7 @@ import {
 
 import LoginView from './components/LoginView';
 import DarkModeToggle from './components/DarkModeToggle';
+import NotificationsBell from './components/NotificationsBell';
 import { useAuth } from './hooks/useAuth';
 
 // Vistas cargadas bajo demanda (code-splitting por ruta): cada una es su propio
@@ -184,12 +185,7 @@ export default function App() {
           <div className="flex-1" />
 
           <div className="flex items-center gap-2 shrink-0">
-            <NavLink
-              to="/reports"
-              className="p-3 bg-white rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all"
-            >
-              <Bell size={20} />
-            </NavLink>
+            <NotificationsBell userId={user?.id} />
             <div className="hidden sm:flex items-center gap-3 bg-white p-2 pr-4 rounded-2xl border border-slate-200 shadow-sm">
               <div className="w-9 h-9 bg-primary-500 rounded-xl flex items-center justify-center text-white font-bold text-sm">
                 {(user?.email?.[0] ?? 'A').toUpperCase()}
@@ -236,9 +232,9 @@ export default function App() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800 mb-2">Configuración de Alertas</h2>
-                <p className="text-slate-500">Gestiona notificaciones por email y preferencias</p>
+                <p className="text-slate-500">Avisos del panel y notificaciones a los usuarios</p>
               </div>
-              <AlertsConfig />
+              <AlertsConfig userId={user?.id} />
             </div>
           } />
           <Route path="/settings" element={<SettingsView />} />

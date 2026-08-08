@@ -1,0 +1,16 @@
+{
+  "name": "Conecta2 Admin",
+  "short_name": "C2 Admin",
+  "description": "Panel de administración de Conecta2",
+  "lang": "es",
+  "scope": "/",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#0D1B2A",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
