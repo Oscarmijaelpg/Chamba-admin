@@ -84,6 +84,7 @@ function Evidence({ disputeId }) {
 }
 
 function ResolveModal({ dispute, rate, onClose, onResolve, busy }) {
+  const readOnly = dispute.status !== 'open';
   const amount = Number(dispute.amount ?? 0);
   const [resolution, setResolution] = useState('release');
   const [workerStr, setWorkerStr] = useState(String(amount));
@@ -109,7 +110,9 @@ function ResolveModal({ dispute, rate, onClose, onResolve, busy }) {
       <div className="relative bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 space-y-5">
           <div>
-            <h3 className="font-bold text-slate-800 text-lg leading-tight">Resolver disputa</h3>
+            <h3 className="font-bold text-slate-800 text-lg leading-tight">
+              {readOnly ? 'Disputa resuelta' : 'Resolver disputa'}
+            </h3>
             <p className="text-slate-500 text-sm mt-1">{dispute.chamba?.title ?? 'Chamba'}</p>
           </div>
 
@@ -126,7 +129,7 @@ function ResolveModal({ dispute, rate, onClose, onResolve, busy }) {
             </div>
           </div>
 
-          <div className="space-y-2">
+          {!readOnly && <div className="space-y-2">
             {options.map((opt) => (
               <button
                 key={opt.id}
@@ -145,9 +148,9 @@ function ResolveModal({ dispute, rate, onClose, onResolve, busy }) {
                 </div>
               </button>
             ))}
-          </div>
+          </div>}
 
-          {resolution === 'split' && (
+          {!readOnly && resolution === 'split' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1">Al trabajador</label>
@@ -166,16 +169,25 @@ function ResolveModal({ dispute, rate, onClose, onResolve, busy }) {
           )}
 
           <div className="p-3.5 bg-slate-50 rounded-xl text-sm space-y-1">
-            <div className="flex justify-between"><span className="text-slate-500">Trabajador recibe (neto)</span><span className="font-bold text-slate-800">{money(workerNet)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Empleador recibe</span><span className="font-bold text-slate-800">{money(effEmployer)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Comisión ({rate}%)</span><span className="font-bold text-slate-800">{money(commission)}</span></div>
+            {readOnly ? (
+              <>
+                <div className="flex justify-between"><span className="text-slate-500">Se pagó al trabajador</span><span className="font-bold text-slate-800">{money(dispute.worker_amount)}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Volvió al cliente</span><span className="font-bold text-slate-800">{money(dispute.employer_amount)}</span></div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between"><span className="text-slate-500">Trabajador recibe (neto)</span><span className="font-bold text-slate-800">{money(workerNet)}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Empleador recibe</span><span className="font-bold text-slate-800">{money(effEmployer)}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Comisión ({rate}%)</span><span className="font-bold text-slate-800">{money(commission)}</span></div>
+              </>
+            )}
           </div>
 
           <div className="flex gap-3">
             <button onClick={onClose} disabled={busy} className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 disabled:opacity-50">
-              Cancelar
+              {readOnly ? 'Cerrar' : 'Cancelar'}
             </button>
-            <button
+            {!readOnly && <button
               onClick={() => onResolve({
                 disputeId: dispute.id,
                 resolution,
@@ -186,7 +198,7 @@ function ResolveModal({ dispute, rate, onClose, onResolve, busy }) {
               className="flex-1 px-4 py-3 rounded-xl font-semibold bg-primary-600 hover:bg-primary-700 text-white transition-all disabled:opacity-50"
             >
               {busy ? 'Procesando…' : 'Confirmar'}
-            </button>
+            </button>}
           </div>
         </div>
       </div>
@@ -251,41 +263,38 @@ export default function DisputesView() {
       ) : (
         <div className="space-y-3">
           {d.disputes.map((dp) => (
-            <div key={dp.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <button
+              key={dp.id}
+              type="button"
+              onClick={() => setTarget(dp)}
+              className="w-full text-left bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 transition-all hover:border-primary-300 hover:shadow-md"
+            >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="font-bold text-slate-800 truncate">{dp.chamba?.title ?? 'Chamba'}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Abierta por {dp.opener?.full_name ?? '—'} · {fmtDate(dp.created_at)}</p>
+                  <p className="text-xs text-slate-500 mt-1 truncate">
+                    <span className="font-semibold">{dp.opener?.full_name ?? '—'}</span>
+                    <span className="text-slate-300"> vs </span>
+                    <span className="font-semibold">{dp.against?.full_name ?? '—'}</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{fmtDate(dp.created_at)}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[11px] text-slate-400 uppercase font-bold">Congelado</p>
                   <p className="font-black text-slate-800">{money(dp.amount)}</p>
-                </div>
-              </div>
-
-              <p className="text-sm text-slate-600 mt-3 bg-slate-50 rounded-xl p-3 border-l-2 border-slate-200">“{dp.reason}”</p>
-              <Evidence disputeId={dp.id} />
-
-              {filter === 'open' ? (
-                <div className="flex justify-end mt-4">
-                  <button
-                    onClick={() => setTarget(dp)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm transition-all"
-                  >
-                    <Scale size={16} /> Resolver
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 mt-4 text-xs font-semibold">
-                  <span className="px-3 py-1 rounded-full bg-green-50 text-green-600">
-                    Resuelta: {dp.resolution === 'release' ? 'pagó al trabajador' : dp.resolution === 'refund' ? 'devolvió al empleador' : 'dividido'}
-                  </span>
-                  {dp.resolution === 'split' && (
-                    <span className="text-slate-400">Trab. {money(dp.worker_amount)} · Emp. {money(dp.employer_amount)}</span>
+                  {filter === 'open' ? (
+                    <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-primary-600">
+                      <Scale size={13} /> Revisar
+                    </span>
+                  ) : (
+                    <span className="mt-1 inline-block px-2 py-0.5 rounded-full bg-green-50 text-[11px] font-bold text-green-600">
+                      {dp.resolution === 'release' ? 'Pagó al trabajador'
+                        : dp.resolution === 'refund' ? 'Devolvió al cliente' : 'Dividido'}
+                    </span>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            </button>
           ))}
 
           <Pagination page={d.page} totalPages={d.totalPages} total={d.total} pageSize={d.pageSize} onPage={d.setPage} isFetching={d.isFetching} />
