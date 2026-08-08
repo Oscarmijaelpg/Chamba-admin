@@ -6,6 +6,7 @@ import { useSettings } from '../hooks/useSettings';
 import Pagination from './Pagination';
 
 const money = (n) => `Bs. ${Number(n ?? 0).toLocaleString('es-BO')}`;
+const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
 
 // Pruebas que subieron las partes. Sin esto había que resolver sobre plata
 // ajena con un párrafo de texto y la palabra de cada uno.
