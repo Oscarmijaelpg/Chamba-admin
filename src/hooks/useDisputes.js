@@ -30,12 +30,15 @@ export function useDisputes(filter) {
   });
 
   const resolveMutation = useMutation({
-    mutationFn: async ({ disputeId, resolution, workerAmount = 0, employerAmount = 0 }) => {
+    mutationFn: async ({ disputeId, resolution, workerAmount = 0, employerAmount = 0, chambaStatus = null }) => {
       const { data, error } = await supabase.rpc('admin_resolve_dispute', {
         p_dispute_id: disputeId,
         p_resolution: resolution,
         p_worker_amount: workerAmount,
         p_employer_amount: employerAmount,
+        // Qué pasa con la chamba: lo decide quien lee el expediente, no una
+        // regla fija atada al reparto del dinero.
+        p_chamba_status: chambaStatus,
       });
       if (error) throw error;
       if (data && data.ok === false) throw new Error(data.code || 'No se pudo resolver');

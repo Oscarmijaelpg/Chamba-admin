@@ -87,6 +87,9 @@ function ResolveModal({ dispute, rate, onClose, onResolve, busy }) {
   const readOnly = dispute.status !== 'open';
   const amount = Number(dispute.amount ?? 0);
   const [resolution, setResolution] = useState('release');
+  // Estado final de la chamba: por defecto sigue la regla vieja (si cobró algo,
+  // completada), pero se puede forzar.
+  const [chambaStatus, setChambaStatus] = useState('auto');
   const [workerStr, setWorkerStr] = useState(String(amount));
 
   const workerSplit = Math.min(amount, Math.max(0, Number(workerStr) || 0));
@@ -150,6 +153,27 @@ function ResolveModal({ dispute, rate, onClose, onResolve, busy }) {
             ))}
           </div>}
 
+          {!readOnly && (
+            <div>
+              <p className="mb-2 text-sm font-semibold text-slate-700">¿Cómo queda la chamba?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'auto', label: 'Automático', hint: 'Según el reparto' },
+                  { id: 'completed', label: 'Completada', hint: 'El trabajo se hizo' },
+                  { id: 'cancelled', label: 'Cancelada', hint: 'No se concretó' },
+                ].map((o) => (
+                  <button key={o.id} type="button" onClick={() => setChambaStatus(o.id)}
+                    className={`rounded-xl border px-2 py-2 text-center transition-colors ${
+                      chambaStatus === o.id ? 'border-primary-500 bg-primary-50' : 'border-slate-200 bg-white hover:border-primary-300'
+                    }`}>
+                    <span className={`block text-xs font-bold ${chambaStatus === o.id ? 'text-primary-700' : 'text-slate-700'}`}>{o.label}</span>
+                    <span className="mt-0.5 block text-[10px] text-slate-400">{o.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {!readOnly && resolution === 'split' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -193,6 +217,7 @@ function ResolveModal({ dispute, rate, onClose, onResolve, busy }) {
                 resolution,
                 workerAmount: resolution === 'split' ? workerSplit : 0,
                 employerAmount: resolution === 'split' ? employerSplit : 0,
+                chambaStatus: chambaStatus === 'auto' ? null : chambaStatus,
               })}
               disabled={busy || !splitValid}
               className="flex-1 px-4 py-3 rounded-xl font-semibold bg-primary-600 hover:bg-primary-700 text-white transition-all disabled:opacity-50"
