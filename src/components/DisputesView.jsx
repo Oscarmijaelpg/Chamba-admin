@@ -11,6 +11,7 @@ const money = (n) => `Bs. ${Number(n ?? 0).toLocaleString('es-BO')}`;
 // ajena con un párrafo de texto y la palabra de cada uno.
 function Evidence({ disputeId }) {
   const [items, setItems] = useState(null);
+  const [msgs, setMsgs] = useState([]);
 
   useEffect(() => {
     let active = true;
@@ -20,15 +21,33 @@ function Evidence({ disputeId }) {
       .eq('dispute_id', disputeId)
       .order('created_at', { ascending: true })
       .then(({ data }) => { if (active) setItems(data ?? []); });
+    // El descargo de cada parte: sin esto se resuelve con un solo lado del caso.
+    supabase
+      .from('dispute_messages')
+      .select('id, body, created_at, author:users(full_name)')
+      .eq('dispute_id', disputeId)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => { if (active) setMsgs(data ?? []); });
     return () => { active = false; };
   }, [disputeId]);
 
-  if (items === null) return <p className="mt-3 text-xs text-slate-400">Cargando pruebas…</p>;
-  if (items.length === 0) return <p className="mt-3 text-xs text-slate-400">Sin pruebas adjuntas.</p>;
+  if (items === null) return <p className="mt-3 text-xs text-slate-400">Cargando…</p>;
 
   return (
     <div className="mt-3">
-      <p className="text-xs font-bold text-slate-500 mb-2">Pruebas ({items.length})</p>
+      {msgs.length > 0 && (
+        <div className="mb-3 space-y-1.5">
+          <p className="text-xs font-bold text-slate-500">Descargos ({msgs.length})</p>
+          {msgs.map((m) => (
+            <div key={m.id} className="rounded-lg bg-white px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200">
+              <p className="text-[11px] font-bold text-slate-400">{m.author?.full_name ?? 'Usuario'}</p>
+              <p className="whitespace-pre-line">{m.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {items.length === 0 && <p className="text-xs text-slate-400">Sin pruebas adjuntas.</p>}
+      {items.length > 0 && <p className="text-xs font-bold text-slate-500 mb-2">Pruebas ({items.length})</p>}
       <div className="flex flex-wrap gap-2">
         {items.map((it) => (
           <a key={it.id} href={it.url} target="_blank" rel="noreferrer"
