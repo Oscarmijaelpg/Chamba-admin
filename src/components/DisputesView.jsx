@@ -21,7 +21,18 @@ function Evidence({ disputeId }) {
       .select('id, url, kind, note, created_at, uploader:users(full_name)')
       .eq('dispute_id', disputeId)
       .order('created_at', { ascending: true })
-      .then(({ data }) => { if (active) setItems(data ?? []); });
+      .then(async ({ data }) => {
+        if (!active) return;
+        // Bucket privado: cada prueba necesita URL firmada. Las viejas ya
+        // guardan una URL pública completa.
+        const withUrls = await Promise.all((data ?? []).map(async (a) => {
+          if (String(a.url).startsWith('http')) return a;
+          const { data: signed } = await supabase.storage
+            .from('disputas').createSignedUrl(a.url, 60 * 60);
+          return { ...a, url: signed?.signedUrl ?? a.url };
+        }));
+        if (active) setItems(withUrls);
+      });
     // El descargo de cada parte: sin esto se resuelve con un solo lado del caso.
     supabase
       .from('dispute_messages')
