@@ -3,12 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid,
 } from 'recharts';
-import { Eye, Smartphone, Globe, Loader2, Briefcase, Wrench, HelpCircle } from 'lucide-react';
+import { Eye, Smartphone, Globe, Loader2, Briefcase, Wrench } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 // De dónde se ven los empleos y chambas: desde la app o desde la web pública.
-// El origen se empezó a registrar el 2026-08-05; los eventos anteriores salen
-// como "desconocido" (no se puede inventar de dónde vinieron).
+// La web siempre manda su origen; lo que llega sin origen es de la app móvil
+// (las versiones anteriores a la 1.0.38 no lo enviaban), y la base ya lo cuenta
+// como "app" en la vista `content_views_by_source`.
 const RANGES = [
   { days: 7, label: '7 días' },
   { days: 30, label: '30 días' },
@@ -18,7 +19,6 @@ const RANGES = [
 const SOURCE_META = {
   app: { label: 'App', color: '#1BF28E' },
   site: { label: 'Web', color: '#2563EB' },
-  desconocido: { label: 'Sin origen', color: '#CBD5E1' },
 };
 
 export default function ContentViewsView() {
@@ -65,7 +65,7 @@ export default function ContentViewsView() {
 
   // Totales por origen (para las tarjetas de arriba).
   const totals = useMemo(() => {
-    const acc = { app: 0, site: 0, desconocido: 0 };
+    const acc = { app: 0, site: 0 };
     for (const r of series) acc[r.source] = (acc[r.source] ?? 0) + Number(r.views);
     return acc;
   }, [series]);
@@ -74,7 +74,7 @@ export default function ContentViewsView() {
   const chartData = useMemo(() => {
     const byDay = new Map();
     for (const r of series) {
-      const row = byDay.get(r.day) ?? { day: r.day, app: 0, site: 0, desconocido: 0 };
+      const row = byDay.get(r.day) ?? { day: r.day, app: 0, site: 0 };
       row[r.source] = (row[r.source] ?? 0) + Number(r.views);
       byDay.set(r.day, row);
     }
@@ -104,9 +104,9 @@ export default function ContentViewsView() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon={Smartphone} label="Vistas desde la app" value={totals.app} color="text-emerald-600 bg-emerald-50" />
-        <StatCard icon={Globe} label="Vistas desde la web" value={totals.site} color="text-blue-600 bg-blue-50" />
-        <StatCard icon={HelpCircle} label="Sin origen (histórico)" value={totals.desconocido} color="text-slate-500 bg-slate-100" />
+        <StatCard icon={Eye} label="Vistas en total" value={totals.app + totals.site} color="text-slate-600 bg-slate-100" />
+        <StatCard icon={Smartphone} label="Desde la app" value={totals.app} color="text-emerald-600 bg-emerald-50" />
+        <StatCard icon={Globe} label="Desde la web" value={totals.site} color="text-blue-600 bg-blue-50" />
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -124,14 +124,10 @@ export default function ContentViewsView() {
               <Tooltip />
               <Legend />
               <Bar stackId="v" dataKey="app" name={SOURCE_META.app.label} fill={SOURCE_META.app.color} radius={[0, 0, 0, 0]} />
-              <Bar stackId="v" dataKey="site" name={SOURCE_META.site.label} fill={SOURCE_META.site.color} radius={[0, 0, 0, 0]} />
-              <Bar stackId="v" dataKey="desconocido" name={SOURCE_META.desconocido.label} fill={SOURCE_META.desconocido.color} radius={[4, 4, 0, 0]} />
+              <Bar stackId="v" dataKey="site" name={SOURCE_META.site.label} fill={SOURCE_META.site.color} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
-        <p className="mt-3 text-xs text-slate-400">
-          El origen se registra desde el 5 de agosto de 2026. Las vistas anteriores aparecen como “sin origen”.
-        </p>
       </div>
 
       {/* Ranking */}

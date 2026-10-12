@@ -34,11 +34,8 @@ const ReportsView = lazy(() => import('./components/ReportsView'));
 const DisputesView = lazy(() => import('./components/DisputesView'));
 const AuditLogsView = lazy(() => import('./components/AuditLogsView'));
 const JobsTable = lazy(() => import('./components/JobsTable'));
-const AnalyticsCharts = lazy(() => import('./components/AnalyticsCharts'));
-const ProjectAnalytics = lazy(() => import('./components/ProjectAnalytics'));
-const PlatformInsights = lazy(() => import('./components/PlatformInsights'));
+const AnalyticsView = lazy(() => import('./components/AnalyticsView'));
 const AlertsConfig = lazy(() => import('./components/AlertsConfig'));
-const AgeAnalytics = lazy(() => import('./components/AgeAnalytics'));
 const ActivityView = lazy(() => import('./components/ActivityView'));
 const TrackedLinksView = lazy(() => import('./components/TrackedLinksView'));
 const ContentViewsView = lazy(() => import('./components/ContentViewsView'));
@@ -212,22 +209,7 @@ export default function App() {
           <Route path="/activity" element={<ActivityView />} />
           <Route path="/enlaces" element={<TrackedLinksView />} />
           <Route path="/vistas" element={<ContentViewsView />} />
-          <Route path="/analytics" element={
-            <div className="space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">Analytics del Proyecto</h2>
-                <p className="text-slate-500">Recurrencia, embudo de conversión, postulaciones y salud del scraper</p>
-              </div>
-              <ProjectAnalytics />
-              <PlatformInsights />
-              <AgeAnalytics />
-              <div className="pt-2">
-                <h3 className="text-lg font-bold text-slate-800 mb-1">Eventos y tendencias</h3>
-                <p className="text-sm text-slate-500 mb-4">Distribución de eventos e ingresos (datos crudos)</p>
-                <AnalyticsCharts />
-              </div>
-            </div>
-          } />
+          <Route path="/analytics" element={<AnalyticsView />} />
           <Route path="/alerts" element={
             <div className="space-y-6">
               <div>
