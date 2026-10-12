@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MapPin, Calendar, Building2, Tag, EyeOff } from 'lucide-react';
+import { X, MapPin, Calendar, Building2, Tag, EyeOff, UserRound, Info } from 'lucide-react';
 import { useReportedEntity } from '../hooks/useReports';
 import ChambaDetailModal from './ChambaDetailModal';
 import JobDetailModal from './JobDetailModal';
@@ -7,7 +7,7 @@ import UserDetailModal from './UserDetailModal';
 
 // Abre el contenido reportado (perfil, chamba, empleo o alerta) trayéndolo por
 // id. Es solo lectura: las acciones se toman desde la tarjeta del reporte.
-export default function ReportedContentModal({ entityType, entityId, onClose }) {
+export default function ReportedContentModal({ entityType, entityId, authorName, onClose }) {
   const { data, isLoading, error } = useReportedEntity(entityType, entityId);
 
   if (isLoading) return <Shell title="Contenido reportado" onClose={onClose}><p className="text-sm text-slate-400 italic">Cargando...</p></Shell>;
@@ -17,7 +17,7 @@ export default function ReportedContentModal({ entityType, entityId, onClose }) 
   if (entityType === 'chamba') return <ChambaDetailModal chamba={data} onClose={onClose} readOnly />;
   if (entityType === 'job') return <JobDetailModal job={data} onClose={onClose} readOnly />;
   if (entityType === 'user') return <UserDetailModal user={data} onClose={onClose} />;
-  return <AlertContent alert={data} onClose={onClose} />;
+  return <AlertContent alert={data} authorName={authorName} onClose={onClose} />;
 }
 
 function Shell({ title, onClose, children }) {
@@ -38,14 +38,19 @@ function Shell({ title, onClose, children }) {
 }
 
 // Las alertas no tienen modal de detalle propio en el panel.
-function AlertContent({ alert, onClose }) {
+function AlertContent({ alert, authorName, onClose }) {
   const images = (alert.images ?? []).filter(Boolean);
   const categories = Array.isArray(alert.category) ? alert.category : [];
   const chip = 'flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg';
 
   return (
-    <Shell title={alert.title || alert.company_name || 'Alerta'} onClose={onClose}>
+    <Shell title={`Alerta ciudadana sobre ${alert.company_name || 'una empresa'}`} onClose={onClose}>
+      <p className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 leading-relaxed">
+        <Info size={14} className="shrink-0 mt-0.5" />
+        Esto es lo que un usuario publicó para avisar a otros sobre esta empresa. No lo escribió la empresa.
+      </p>
       <div className="flex flex-wrap gap-2">
+        {authorName && <span className={chip}><UserRound size={10} /> Publicada por {authorName}</span>}
         {alert.company_name && <span className={chip}><Building2 size={10} /> {alert.company_name}</span>}
         {alert.alert_type && <span className={chip}><Tag size={10} /> {alert.alert_type}</span>}
         {alert.city && <span className={chip}><MapPin size={10} /> {alert.city}</span>}

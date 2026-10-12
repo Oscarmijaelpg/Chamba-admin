@@ -75,6 +75,7 @@ function ModerationActionDialog({
   action, entityType, targetName, contentTitle,
   onClose, onConfirm, loading = false, error = null,
   note = null,          // aclaración extra bajo el texto (p. ej. cuántos reportes se cierran)
+  warning = null,       // advertencia destacada antes de confirmar
   notifyLabel = null,   // reemplaza la etiqueta de la casilla
 }) {
   const [message, setMessage] = useState('');
@@ -102,6 +103,12 @@ function ModerationActionDialog({
               <X size={20} />
             </button>
           </div>
+
+          {warning && (
+            <p className="mt-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 leading-relaxed font-semibold">
+              {warning}
+            </p>
+          )}
 
           {hasMessage && (
             <label className="block mt-5">
