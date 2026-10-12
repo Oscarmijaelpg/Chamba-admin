@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   X, MapPin, User, Mail, Calendar, FileText, DollarSign,
   ShieldCheck, Globe, Pencil, Save, Trash2, CheckCircle, XCircle, AlertTriangle,
+  EyeOff, MessageSquareWarning, Ban,
 } from 'lucide-react';
 
 const STATUS_COLOR = {
@@ -20,7 +21,9 @@ const emptyToNull = (v) => (v === '' || v === undefined ? null : v);
 const numOrNull = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 const inputCls = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
 
-export default function ChambaDetailModal({ chamba, onClose, onUpdate, onDelete }) {
+// `readOnly`: sin edición ni acciones (así se abre desde Reportes).
+// `onModerate(action)`: muestra las acciones de moderación (remove_content | warn | ban).
+export default function ChambaDetailModal({ chamba, onClose, onUpdate, onDelete, onModerate, readOnly = false }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({});
@@ -152,7 +155,7 @@ export default function ChambaDetailModal({ chamba, onClose, onUpdate, onDelete 
         </div>
 
         {/* Footer acciones */}
-        <div className="p-5 border-t border-slate-100 space-y-3">
+        {!readOnly && <div className="p-5 border-t border-slate-100 space-y-3">
           {editing ? (
             <div className="flex gap-3">
               <button onClick={() => setEditing(false)} disabled={saving} className="flex-1 py-3 rounded-xl font-bold text-sm bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all disabled:opacity-50">Cancelar</button>
@@ -179,9 +182,27 @@ export default function ChambaDetailModal({ chamba, onClose, onUpdate, onDelete 
               <button onClick={() => { onDelete(chamba.id); onClose(); }} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-red-50 text-red-500 hover:bg-red-100 border border-red-100 transition-all">
                 <Trash2 size={17} /> Borrar chamba
               </button>
+              {onModerate && (
+                <div className="pt-3 border-t border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Moderación (avisa al dueño y queda en su historial)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {chamba.status !== 'deleted' && (
+                    <button onClick={() => { onModerate('remove_content'); onClose(); }} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs bg-slate-800 text-white hover:bg-slate-900 transition-all whitespace-nowrap">
+                      <EyeOff size={14} /> Eliminar aviso
+                    </button>
+                    )}
+                    <button onClick={() => { onModerate('warn'); onClose(); }} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-100 transition-all whitespace-nowrap">
+                      <MessageSquareWarning size={14} /> Advertir al dueño
+                    </button>
+                    <button onClick={() => { onModerate('ban'); onClose(); }} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs bg-red-500 text-white hover:bg-red-600 transition-all whitespace-nowrap">
+                      <Ban size={14} /> Suspender al dueño
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
-        </div>
+        </div>}
       </div>
     </div>
   );

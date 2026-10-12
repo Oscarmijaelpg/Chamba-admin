@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Search, MapPin, Building2, User, Calendar, Briefcase, ChevronRight, Globe, Home } from 'lucide-react';
+import { Search, MapPin, Building2, User, Calendar, Briefcase, ChevronRight, Globe, Home, EyeOff, MessageSquareWarning, Ban } from 'lucide-react';
 import { useJobs } from '../hooks/useJobs';
+import { useModerationDialog } from '../hooks/useModeration';
 import ConfirmModal from './ConfirmModal';
+import ModerationActionModal from './ModerationActionModal';
 import JobDetailModal from './JobDetailModal';
 import Pagination from './Pagination';
 
@@ -71,6 +73,18 @@ export default function JobsTable() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [confirm, setConfirm]         = useState({ open: false, id: null });
   const [actionLoading, setActionLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 4000); };
+
+  // Moderación con aviso y registro (RPC admin_moderate). Se pasa el id del
+  // empleo: el servidor resuelve quién es el dueño. Los empleos que trajo el
+  // scraper no tienen cuenta dueña (user_id nulo): solo se pueden eliminar.
+  const moderation = useModerationDialog({ onDone: (msg) => showToast(msg) });
+  const openModeration = (job, action) => moderation.open({
+    action, entityType: 'job', entityId: job.id,
+    targetName: job.employer?.full_name, contentTitle: job.title,
+  });
 
   // KPIs globales (del RPC); búsqueda/filtros/paginación resueltos en el servidor.
   const metrics = { ...stats, externalPct: stats.total ? Math.round((stats.external / stats.total) * 100) : 0 };
@@ -89,6 +103,12 @@ export default function JobsTable() {
 
   return (
     <div className="space-y-5">
+      {toast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-lg text-sm font-semibold text-white transition-all ${toast.type === 'error' ? 'bg-red-500' : 'bg-slate-800'}`}>
+          {toast.msg}
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Gestión de Trabajos</h2>
@@ -218,8 +238,27 @@ export default function JobsTable() {
                       <td className="px-5 py-3.5 text-xs text-slate-400 whitespace-nowrap">
                         {new Date(job.created_at).toLocaleDateString('es-BO')}
                       </td>
-                      <td className="px-5 py-3.5">
-                        <ChevronRight size={16} className="text-slate-300 ml-auto" />
+                      <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-0.5">
+                          {job.status !== 'rejected' && (
+                            <button onClick={() => openModeration(job, 'remove_content')} title="Eliminar aviso" className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-all">
+                              <EyeOff size={16} />
+                            </button>
+                          )}
+                          {job.user_id && (
+                            <button onClick={() => openModeration(job, 'warn')} title="Advertir al dueño" className="p-2 rounded-lg text-amber-500 hover:bg-amber-50 transition-all">
+                              <MessageSquareWarning size={16} />
+                            </button>
+                          )}
+                          {job.user_id && (
+                            <button onClick={() => openModeration(job, 'ban')} title="Suspender al dueño" className="p-2 rounded-lg text-red-400 hover:bg-red-50 transition-all">
+                              <Ban size={16} />
+                            </button>
+                          )}
+                          <button onClick={() => setSelectedJob(job)} title="Ver detalle" className="p-2 rounded-lg text-slate-300 hover:bg-slate-100 transition-all">
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -247,6 +286,7 @@ export default function JobsTable() {
           onClose={() => setSelectedJob(null)}
           onUpdate={updateJob}
           onDelete={(id) => { openDeleteConfirm(id); setSelectedJob(null); }}
+          onModerate={(action) => openModeration(selectedJob, action)}
         />
       )}
 
@@ -260,6 +300,8 @@ export default function JobsTable() {
         message="Esta acción no se puede deshacer. El trabajo será eliminado permanentemente."
         confirmLabel="Sí, eliminar"
       />
+
+      <ModerationActionModal {...moderation.dialogProps} />
     </div>
   );
 }

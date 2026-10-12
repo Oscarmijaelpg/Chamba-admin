@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Search, MapPin, Briefcase, ChevronRight, ShieldCheck, Globe, User, Calendar, Coins, Loader2 } from 'lucide-react';
+import { Search, MapPin, Briefcase, ChevronRight, ShieldCheck, Globe, User, Calendar, Coins, Loader2, EyeOff, MessageSquareWarning, Ban } from 'lucide-react';
 import { useChambas } from '../hooks/useChambas';
+import { useModerationDialog } from '../hooks/useModeration';
 import ChambaDetailModal from './ChambaDetailModal';
+import ModerationActionModal from './ModerationActionModal';
 import ConfirmModal from './ConfirmModal';
 import Pagination from './Pagination';
 
@@ -60,6 +62,17 @@ export default function ChambasTable() {
   const [selected, setSelected] = useState(null);
   const [confirm, setConfirm] = useState({ open: false, id: null });
   const [actionLoading, setActionLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 4000); };
+
+  // Moderación con aviso y registro (RPC admin_moderate). Se pasa el id de la
+  // chamba: el servidor resuelve quién es el dueño.
+  const moderation = useModerationDialog({ onDone: (msg) => showToast(msg) });
+  const openModeration = (chamba, action) => moderation.open({
+    action, entityType: 'chamba', entityId: chamba.id,
+    targetName: chamba.employer?.full_name, contentTitle: chamba.title,
+  });
 
   const handleDelete = async () => {
     setActionLoading(true);
@@ -70,6 +83,12 @@ export default function ChambasTable() {
 
   return (
     <div className="space-y-5">
+      {toast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-lg text-sm font-semibold text-white transition-all ${toast.type === 'error' ? 'bg-red-500' : 'bg-slate-800'}`}>
+          {toast.msg}
+        </div>
+      )}
+
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Gestión de Chambas</h2>
         <p className="text-slate-400 text-sm mt-0.5">{pageTotal.toLocaleString()} de {stats.total.toLocaleString()} chambas</p>
@@ -180,7 +199,24 @@ export default function ChambasTable() {
                         <span className="flex items-center gap-1 text-sm text-slate-500"><MapPin size={12} className="text-slate-300 shrink-0" /> {c.city || '-'}</span>
                       </td>
                       <td className="px-5 py-3.5"><StatusBadge status={c.status} /></td>
-                      <td className="px-5 py-3.5"><ChevronRight size={16} className="text-slate-300 ml-auto" /></td>
+                      <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-0.5">
+                          {c.status !== 'deleted' && (
+                            <button onClick={() => openModeration(c, 'remove_content')} title="Eliminar aviso" className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-all">
+                              <EyeOff size={16} />
+                            </button>
+                          )}
+                          <button onClick={() => openModeration(c, 'warn')} title="Advertir al dueño" className="p-2 rounded-lg text-amber-500 hover:bg-amber-50 transition-all">
+                              <MessageSquareWarning size={16} />
+                            </button>
+                          <button onClick={() => openModeration(c, 'ban')} title="Suspender al dueño" className="p-2 rounded-lg text-red-400 hover:bg-red-50 transition-all">
+                              <Ban size={16} />
+                            </button>
+                          <button onClick={() => setSelected(c)} title="Ver detalle" className="p-2 rounded-lg text-slate-300 hover:bg-slate-100 transition-all">
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -198,6 +234,7 @@ export default function ChambasTable() {
           onClose={() => setSelected(null)}
           onUpdate={updateChamba}
           onDelete={(id) => { setConfirm({ open: true, id }); setSelected(null); }}
+          onModerate={(action) => openModeration(selected, action)}
         />
       )}
 
@@ -210,6 +247,8 @@ export default function ChambasTable() {
         message="La chamba dejará de mostrarse en la app (borrado lógico). No se pierde el historial de postulaciones ni pagos."
         confirmLabel="Sí, borrar"
       />
+
+      <ModerationActionModal {...moderation.dialogProps} />
     </div>
   );
 }

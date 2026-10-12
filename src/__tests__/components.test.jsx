@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock supabase before any imports that use it
@@ -52,7 +52,7 @@ const TestIcon = ({ size, className }) => (
 import DarkModeToggle from '../components/DarkModeToggle';
 import TableSearch from '../components/TableSearch';
 import TableActions from '../components/TableActions';
-import ModerationModal from '../components/ModerationModal';
+import ModerationActionModal from '../components/ModerationActionModal';
 
 // ─── 1. StatCard ─────────────────────────────────────────────────────────────
 describe('StatCard', () => {
@@ -173,81 +173,46 @@ describe('TableActions', () => {
   });
 });
 
-// ─── 5. ModerationModal ──────────────────────────────────────────────────────
-describe('ModerationModal', () => {
-  const mockItem = { id: '1', name: 'Test User', email: 'test@example.com', status: 'active' };
+// ─── 5. ModerationActionModal ────────────────────────────────────────────────
+describe('ModerationActionModal', () => {
+  const base = { action: 'ban', entityType: 'user', targetName: 'Test User', onClose: vi.fn(), onConfirm: vi.fn() };
 
   it('does NOT render when isOpen is false', () => {
-    render(
-      <ModerationModal
-        isOpen={false}
-        item={mockItem}
-        onClose={vi.fn()}
-        onAction={vi.fn()}
-      />
-    );
-    expect(screen.queryByText('Moderación')).not.toBeInTheDocument();
+    render(<ModerationActionModal {...base} isOpen={false} />);
+    expect(screen.queryByText('Suspender a Test User')).not.toBeInTheDocument();
   });
 
-  it('does NOT render when item is null even if isOpen is true', () => {
-    render(
-      <ModerationModal
-        isOpen={true}
-        item={null}
-        onClose={vi.fn()}
-        onAction={vi.fn()}
-      />
-    );
-    expect(screen.queryByText('Moderación')).not.toBeInTheDocument();
+  it('shows the title and the honest suspension text', () => {
+    render(<ModerationActionModal {...base} isOpen={true} />);
+    expect(screen.getByText('Suspender a Test User')).toBeInTheDocument();
+    expect(screen.getByText(/no puede publicar ni postular/i)).toBeInTheDocument();
+    expect(screen.queryByText(/iniciar sesión/i)).not.toBeInTheDocument();
   });
 
-  it('DOES render when isOpen is true and item is provided', () => {
-    render(
-      <ModerationModal
-        isOpen={true}
-        item={mockItem}
-        onClose={vi.fn()}
-        onAction={vi.fn()}
-      />
-    );
-    expect(screen.getByText('Moderación')).toBeInTheDocument();
+  it('uses the server default message as placeholder and notifies by default', () => {
+    render(<ModerationActionModal {...base} isOpen={true} />);
+    expect(screen.getByPlaceholderText('Tu cuenta fue suspendida por incumplir las normas de la comunidad.')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox')).toBeChecked();
   });
 
-  it('shows item name in the modal when open', () => {
-    render(
-      <ModerationModal
-        isOpen={true}
-        item={mockItem}
-        onClose={vi.fn()}
-        onAction={vi.fn()}
-      />
-    );
-    expect(screen.getByText('Test User')).toBeInTheDocument();
+  it('sends the typed message and the notify flag on confirm', () => {
+    const onConfirm = vi.fn();
+    render(<ModerationActionModal {...base} action="warn" isOpen={true} onConfirm={onConfirm} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '  Publicaste datos falsos.  ' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByText('Advertir'));
+    expect(onConfirm).toHaveBeenCalledWith({ message: 'Publicaste datos falsos.', notify: false });
   });
 
-  it('shows item email when provided', () => {
-    render(
-      <ModerationModal
-        isOpen={true}
-        item={mockItem}
-        onClose={vi.fn()}
-        onAction={vi.fn()}
-      />
-    );
-    expect(screen.getByText('test@example.com')).toBeInTheDocument();
+  it('has no message field when dismissing a report', () => {
+    render(<ModerationActionModal {...base} action="dismiss" isOpen={true} />);
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.getByText('Descartar reporte')).toBeInTheDocument();
   });
 
-  it('renders action buttons when open', () => {
-    render(
-      <ModerationModal
-        isOpen={true}
-        item={mockItem}
-        onClose={vi.fn()}
-        onAction={vi.fn()}
-      />
-    );
-    expect(screen.getByText('Aprobar')).toBeInTheDocument();
-    expect(screen.getByText('Rechazar')).toBeInTheDocument();
-    expect(screen.getByText('Banear')).toBeInTheDocument();
+  it('shows the error and disables the buttons while loading', () => {
+    render(<ModerationActionModal {...base} isOpen={true} loading={true} error="No se puede suspender a un administrador." />);
+    expect(screen.getByRole('alert')).toHaveTextContent('No se puede suspender a un administrador.');
+    expect(screen.getByText('Cancelar')).toBeDisabled();
   });
 });

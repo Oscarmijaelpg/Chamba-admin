@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useUsers } from '../hooks/useUsers';
-import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2, Cake, Clock, Tag } from 'lucide-react';
+import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2, Cake, Clock, Tag, MessageSquareWarning } from 'lucide-react';
 import { relTime } from '../lib/activity';
+import { useModerationDialog } from '../hooks/useModeration';
 import ConfirmModal from './ConfirmModal';
+import ModerationActionModal from './ModerationActionModal';
 import UserDetailModal from './UserDetailModal';
 import Pagination from './Pagination';
 
@@ -32,7 +34,7 @@ const lastSeenLabel = (iso) => (iso ? relTime(iso) : 'Nunca');
 
 export default function UsersTable() {
   const {
-    users, loading, isFetching, setBanned, deleteUser,
+    users, loading, isFetching, deleteUser,
     search, setSearch, page, setPage, totalPages, total, pageSize,
     city, setCity, ageBand, setAgeBand, ageMin, setAgeMin, ageMax, setAgeMax,
     sort, setSort, dir, setDir, cities,
@@ -55,43 +57,30 @@ export default function UsersTable() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const openBanConfirm = (user) => setConfirmState({ open: true, user, action: 'ban' });
-  const openUnbanConfirm = (user) => setConfirmState({ open: true, user, action: 'unban' });
+  // Advertir / suspender / reactivar pasan por la RPC admin_moderate (avisa al
+  // usuario y deja registro); eliminar la cuenta sigue con su confirmación.
+  const moderation = useModerationDialog({ onDone: (msg) => showToast(msg) });
+  const openModeration = (user, action) => moderation.open({
+    action, entityType: 'user', entityId: user.id, targetName: user.full_name,
+  });
+  const openWarnConfirm = (user) => openModeration(user, 'warn');
+  const openBanConfirm = (user) => openModeration(user, 'ban');
+  const openUnbanConfirm = (user) => openModeration(user, 'unban');
   const openDeleteConfirm = (user) => setConfirmState({ open: true, user, action: 'delete' });
   const closeConfirm = () => setConfirmState({ open: false, user: null, action: null });
 
   const handleConfirm = async () => {
-    const { user, action } = confirmState;
+    const { user } = confirmState;
     setActionLoading(true);
-    const error = action === 'delete'
-      ? await deleteUser(user.id)
-      : await setBanned(user.id, action === 'ban');
+    const error = await deleteUser(user.id);
     setActionLoading(false);
     closeConfirm();
-    if (error) {
-      const fallback = action === 'delete' ? 'Error al eliminar el usuario' : 'Error al actualizar el usuario';
-      showToast(error.message || fallback, 'error');
-    } else if (action === 'delete') {
-      showToast(`${user.full_name} fue eliminado permanentemente`);
-    } else {
-      showToast(action === 'ban' ? `${user.full_name} fue baneado` : `Ban removido a ${user.full_name}`);
-    }
+    if (error) showToast(error.message || 'Error al eliminar el usuario', 'error');
+    else showToast(`${user.full_name} fue eliminado permanentemente`);
   };
 
   // Configuración del modal de confirmación según la acción
   const confirmConfig = {
-    ban: {
-      title: `Banear a ${confirmState.user?.full_name}`,
-      message: 'El usuario no podrá iniciar sesión en la app. Podrás revertir esta acción en cualquier momento.',
-      confirmLabel: 'Sí, banear',
-      confirmClass: 'bg-red-500 hover:bg-red-600 text-white',
-    },
-    unban: {
-      title: `Quitar ban a ${confirmState.user?.full_name}`,
-      message: 'El usuario recuperará acceso completo a la aplicación.',
-      confirmLabel: 'Sí, quitar ban',
-      confirmClass: 'bg-green-500 hover:bg-green-600 text-white',
-    },
     delete: {
       title: `Eliminar a ${confirmState.user?.full_name}`,
       message: 'Acción permanente e irreversible. Se borrarán su cuenta y acceso, junto con sus chambas, postulaciones, billetera y mensajes. No podrás deshacerlo.',
@@ -201,6 +190,7 @@ export default function UsersTable() {
                 key={user.id}
                 user={user}
                 onView={() => setSelectedUser(user)}
+                onWarn={() => openWarnConfirm(user)}
                 onBan={() => openBanConfirm(user)}
                 onUnban={() => openUnbanConfirm(user)}
                 onDelete={() => openDeleteConfirm(user)}
@@ -264,11 +254,20 @@ export default function UsersTable() {
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex justify-end gap-1">
+                          {!user.is_admin && !user.is_banned && (
+                            <button
+                              onClick={() => openWarnConfirm(user)}
+                              title="Advertir"
+                              className="p-2 rounded-lg text-amber-500 hover:bg-amber-50 transition-all"
+                            >
+                              <MessageSquareWarning size={17} />
+                            </button>
+                          )}
                           {!user.is_admin && (
                             user.is_banned ? (
                               <button
                                 onClick={() => openUnbanConfirm(user)}
-                                title="Quitar ban"
+                                title="Reactivar cuenta"
                                 className="p-2 rounded-lg text-green-500 hover:bg-green-50 transition-all"
                               >
                                 <ShieldCheck size={17} />
@@ -276,7 +275,7 @@ export default function UsersTable() {
                             ) : (
                               <button
                                 onClick={() => openBanConfirm(user)}
-                                title="Banear usuario"
+                                title="Suspender cuenta"
                                 className="p-2 rounded-lg text-red-400 hover:bg-red-50 transition-all"
                               >
                                 <ShieldAlert size={17} />
@@ -325,6 +324,7 @@ export default function UsersTable() {
         <UserDetailModal
           user={selectedUser}
           onClose={() => setSelectedUser(null)}
+          onWarn={(u) => { setSelectedUser(null); openWarnConfirm(u); }}
           onBan={(u) => { setSelectedUser(null); openBanConfirm(u); }}
           onUnban={(u) => { setSelectedUser(null); openUnbanConfirm(u); }}
           onDelete={(u) => { setSelectedUser(null); openDeleteConfirm(u); }}
@@ -342,13 +342,16 @@ export default function UsersTable() {
         confirmLabel={confirmConfig.confirmLabel}
         confirmClass={confirmConfig.confirmClass}
       />
+
+      {/* Modal de moderación (advertir / suspender / reactivar) */}
+      <ModerationActionModal {...moderation.dialogProps} />
     </div>
   );
 }
 
 /* ─── Subcomponentes ─── */
 
-function UserCard({ user, onView, onBan, onUnban, onDelete }) {
+function UserCard({ user, onView, onWarn, onBan, onUnban, onDelete }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
       {/* Fila principal */}
@@ -405,21 +408,29 @@ function UserCard({ user, onView, onBan, onUnban, onDelete }) {
       <div className="flex items-center justify-between pt-1 border-t border-slate-50">
         <StatusBadges user={user} />
         {!user.is_admin && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {user.is_banned ? (
               <button
                 onClick={onUnban}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-xl text-xs font-bold transition-all"
               >
-                <ShieldCheck size={13} /> Quitar ban
+                <ShieldCheck size={13} /> Reactivar
               </button>
             ) : (
-              <button
-                onClick={onBan}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl text-xs font-bold transition-all"
-              >
-                <ShieldAlert size={13} /> Banear
-              </button>
+              <>
+                <button
+                  onClick={onWarn}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all"
+                >
+                  <MessageSquareWarning size={13} /> Advertir
+                </button>
+                <button
+                  onClick={onBan}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl text-xs font-bold transition-all"
+                >
+                  <ShieldAlert size={13} /> Suspender
+                </button>
+              </>
             )}
             <button
               onClick={onDelete}
@@ -500,7 +511,7 @@ function StatusBadges({ user }) {
     <div className="flex flex-wrap gap-1">
       {user.is_banned && (
         <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600 uppercase whitespace-nowrap">
-          <ShieldAlert size={10} /> Baneado
+          <ShieldAlert size={10} /> Suspendido
         </span>
       )}
     </div>

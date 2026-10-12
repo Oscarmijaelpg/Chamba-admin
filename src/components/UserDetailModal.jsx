@@ -1,13 +1,20 @@
 import React from 'react';
 import {
   X, Shield, ShieldAlert, ShieldCheck, MapPin,
-  Star, Briefcase, Wallet, Calendar, Mail, User, Trash2, Cake, Tag, Bell, BellOff
+  Star, Briefcase, Wallet, Calendar, Mail, User, Trash2, Cake, Tag, Bell, BellOff, MessageSquareWarning
 } from 'lucide-react';
+import ModerationHistory from './ModerationHistory';
 
-export default function UserDetailModal({ user, onClose, onBan, onUnban, onDelete }) {
+// Las acciones (onWarn / onBan / onUnban / onDelete) son opcionales: sin ellas
+// el modal es de solo lectura (así se abre desde Reportes).
+export default function UserDetailModal({ user, onClose, onWarn, onBan, onUnban, onDelete }) {
   if (!user) return null;
 
+  // `preferences` solo viene en las filas del listado (RPC admin_users_list).
+  const hasPreferences = user.preferences !== undefined;
   const preferences = Array.isArray(user.preferences) ? user.preferences : [];
+  const banAction = user.is_banned ? onUnban : onBan;
+  const hasActions = !user.is_admin && (onWarn || banAction || onDelete);
 
   const joinedDate = user.created_at
     ? new Date(user.created_at).toLocaleDateString('es-BO', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -54,7 +61,7 @@ export default function UserDetailModal({ user, onClose, onBan, onUnban, onDelet
                 )}
                 {user.is_banned && (
                   <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-red-100 text-red-600">
-                    <ShieldAlert size={10} /> Baneado
+                    <ShieldAlert size={10} /> Suspendido
                   </span>
                 )}
               </div>
@@ -73,7 +80,7 @@ export default function UserDetailModal({ user, onClose, onBan, onUnban, onDelet
           </div>
 
           {/* Categorías guardadas como preferencia */}
-          <div className="bg-slate-50 rounded-xl p-3">
+          {hasPreferences && <div className="bg-slate-50 rounded-xl p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 text-slate-400">
                 <Tag size={14} />
@@ -97,19 +104,30 @@ export default function UserDetailModal({ user, onClose, onBan, onUnban, onDelet
             ) : (
               <p className="text-sm text-slate-400">No guardó preferencias de categorías.</p>
             )}
-          </div>
+          </div>}
+
+          <ModerationHistory userId={user.id} />
         </div>
 
         {/* Footer acciones */}
-        {!user.is_admin && (
+        {hasActions && (
           <div className="p-5 border-t border-slate-100 space-y-2.5">
-            {user.is_banned ? (
+            {onWarn && !user.is_banned && (
+              <button
+                onClick={() => { onWarn(user); onClose(); }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-amber-50 border border-amber-100 text-amber-600 hover:bg-amber-100 rounded-xl font-bold transition-all"
+              >
+                <MessageSquareWarning size={18} />
+                Advertir
+              </button>
+            )}
+            {banAction && (user.is_banned ? (
               <button
                 onClick={() => { onUnban(user); onClose(); }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold transition-all"
               >
                 <ShieldCheck size={18} />
-                Quitar ban
+                Reactivar cuenta
               </button>
             ) : (
               <button
@@ -117,9 +135,9 @@ export default function UserDetailModal({ user, onClose, onBan, onUnban, onDelet
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-all"
               >
                 <ShieldAlert size={18} />
-                Banear usuario
+                Suspender cuenta
               </button>
-            )}
+            ))}
             {onDelete && (
               <button
                 onClick={() => { onDelete(user); onClose(); }}

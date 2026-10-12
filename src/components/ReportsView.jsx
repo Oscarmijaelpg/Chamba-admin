@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useReports } from '../hooks/useReports';
-import { AlertTriangle, CheckCircle, EyeOff, Ban, MessageSquareWarning, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, EyeOff, Ban, MessageSquareWarning, XCircle, Eye, UserRound } from 'lucide-react';
 import Pagination from './Pagination';
-import ConfirmModal from './ConfirmModal';
+import ModerationActionModal from './ModerationActionModal';
+import ReportedContentModal from './ReportedContentModal';
 
 // Etiquetas de tipo de entidad reportada
 const ENTITY_META = {
@@ -24,11 +25,14 @@ const RESOLUTION_LABELS = {
   user_banned: 'Usuario suspendido', warned: 'Advertido',
 };
 
-const ACTION_CFG = {
-  dismiss:        { title: 'Descartar reporte', message: 'El reporte se marcará como descartado. No se toma ninguna acción.', confirmLabel: 'Descartar', confirmClass: 'bg-slate-700 hover:bg-slate-800 text-white' },
-  remove_content: { title: 'Ocultar contenido', message: 'El contenido reportado dejará de mostrarse en la app y se avisará al usuario.', confirmLabel: 'Ocultar', confirmClass: 'bg-red-500 hover:bg-red-600 text-white' },
-  ban_user:       { title: 'Suspender usuario', message: 'El usuario no podrá iniciar sesión y recibirá una notificación explicando el motivo.', confirmLabel: 'Suspender', confirmClass: 'bg-red-500 hover:bg-red-600 text-white' },
-  warn:           { title: 'Advertir usuario', message: 'Se le enviará una advertencia de moderación al usuario (sin suspenderlo).', confirmLabel: 'Advertir', confirmClass: 'bg-amber-500 hover:bg-amber-600 text-white' },
+// Acción del reporte (admin_resolve_report) → acción que explica el modal.
+const MODAL_ACTION = { dismiss: 'dismiss', remove_content: 'remove_content', ban_user: 'ban', warn: 'warn' };
+
+// Resolver un reporte cierra todos los pendientes del mismo contenido.
+const closesNote = (report) => {
+  const what = report.entity_type === 'user' ? 'este mismo perfil' : 'este mismo aviso';
+  const n = Number(report.same_entity_count) || 0;
+  return `Resolver cierra todos los reportes pendientes de ${what}${n > 1 ? ` (son ${n})` : ''}.`;
 };
 
 const ENTITY_FILTERS = [
@@ -44,6 +48,8 @@ export default function ReportsView() {
   const [entityType, setEntityType] = useState(null);
   const [confirmState, setConfirmState] = useState({ open: false, report: null, action: null });
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const [viewing, setViewing] = useState(null); // { entityType, entityId }
   const [toast, setToast] = useState(null);
 
   const {
@@ -53,21 +59,23 @@ export default function ReportsView() {
 
   const showToast = (type, msg) => { setToast({ type, msg }); setTimeout(() => setToast(null), 3000); };
 
-  const openConfirm = (report, action) => setConfirmState({ open: true, report, action });
-  const closeConfirm = () => setConfirmState({ open: false, report: null, action: null });
+  const openConfirm = (report, action) => { setActionError(null); setConfirmState({ open: true, report, action }); };
+  const closeConfirm = () => { if (!actionLoading) setConfirmState({ open: false, report: null, action: null }); };
 
-  const handleConfirm = async () => {
+  // Si falla, el modal queda abierto mostrando el motivo.
+  const handleConfirm = async ({ message, notify }) => {
     const { report, action } = confirmState;
     if (!report) return;
     setActionLoading(true);
+    setActionError(null);
     try {
-      await resolveReport(report.id, action, true);
-      showToast('ok', 'Reporte resuelto.');
+      const res = await resolveReport(report.id, action, { notify, message });
+      setConfirmState({ open: false, report: null, action: null });
+      showToast('ok', res?.closed > 1 ? `Se cerraron ${res.closed} reportes de este contenido.` : 'Reporte resuelto.');
     } catch (e) {
-      showToast('error', e?.message || 'No se pudo resolver el reporte.');
+      setActionError(e?.message || 'No se pudo resolver el reporte.');
     } finally {
       setActionLoading(false);
-      closeConfirm();
     }
   };
 
@@ -78,7 +86,7 @@ export default function ReportsView() {
     `px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${entityType === val ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`
   );
 
-  const cfg = confirmState.action ? ACTION_CFG[confirmState.action] : {};
+  const confirmReport = confirmState.report;
 
   return (
     <div className="space-y-6">
@@ -116,6 +124,10 @@ export default function ReportsView() {
           const isPending = report.status === 'pending';
           const canRemove = ['chamba', 'job', 'alert'].includes(report.entity_type);
           const canSanction = !!report.reported_user_id;
+          // `entity_exists` llega de la RPC nueva; si no viene, se asume que existe.
+          const exists = report.entity_exists !== false;
+          const sameCount = Number(report.same_entity_count) || 0;
+          const priorActions = Number(report.user_prior_actions) || 0;
           return (
             <div key={report.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-start gap-5 hover:border-red-200 transition-all">
               <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 shrink-0">
@@ -128,7 +140,20 @@ export default function ReportsView() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide ${meta.cls}`}>{meta.label}</span>
                       {report.reported_user_banned && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-red-100 text-red-700">Baneado</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-red-100 text-red-700">Suspendido</span>
+                      )}
+                      {isPending && sameCount > 1 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-orange-100 text-orange-700">
+                          {sameCount} reportes de este {report.entity_type === 'user' ? 'perfil' : 'aviso'}
+                        </span>
+                      )}
+                      {priorActions > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-red-50 text-red-600">
+                          {priorActions} {priorActions === 1 ? 'sanción previa' : 'sanciones previas'}
+                        </span>
+                      )}
+                      {!exists && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-slate-100 text-slate-500">Ya no existe</span>
                       )}
                       {!isPending && report.resolution && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-slate-100 text-slate-600">{RESOLUTION_LABELS[report.resolution] || report.resolution}</span>
@@ -152,6 +177,19 @@ export default function ReportsView() {
                   {report.description && <p className="text-sm text-slate-700 leading-relaxed italic">&ldquo;{report.description}&rdquo;</p>}
                 </div>
 
+                <div className="flex gap-2 mt-4 flex-wrap">
+                  {exists && (
+                    <button onClick={() => setViewing({ entityType: report.entity_type, entityId: report.entity_id })} className="flex items-center gap-2 px-3 py-1.5 text-primary-600 text-xs font-bold bg-primary-50 hover:bg-primary-100 rounded-lg transition-all">
+                      <Eye size={14} /> Ver {(meta.label || 'contenido').toLowerCase()}
+                    </button>
+                  )}
+                  {report.reported_user_id && report.entity_type !== 'user' && (
+                    <button onClick={() => setViewing({ entityType: 'user', entityId: report.reported_user_id })} className="flex items-center gap-2 px-3 py-1.5 text-slate-600 text-xs font-bold bg-slate-100 hover:bg-slate-200 rounded-lg transition-all">
+                      <UserRound size={14} /> Ver responsable
+                    </button>
+                  )}
+                </div>
+
                 {isPending && (
                   <div className="flex justify-end gap-2 mt-6 flex-wrap">
                     <button onClick={() => openConfirm(report, 'dismiss')} className="flex items-center gap-2 px-4 py-2 text-slate-500 text-sm font-bold hover:bg-slate-100 rounded-xl transition-all">
@@ -164,7 +202,7 @@ export default function ReportsView() {
                     )}
                     {canRemove && (
                       <button onClick={() => openConfirm(report, 'remove_content')} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-900 transition-all active:scale-95">
-                        <EyeOff size={16} /> Ocultar
+                        <EyeOff size={16} /> Eliminar {report.entity_type === 'alert' ? 'alerta' : 'aviso'}
                       </button>
                     )}
                     {canSanction && !report.reported_user_banned && (
@@ -190,15 +228,26 @@ export default function ReportsView() {
 
       <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} isFetching={isFetching} />
 
-      <ConfirmModal
+      {viewing && (
+        <ReportedContentModal
+          entityType={viewing.entityType}
+          entityId={viewing.entityId}
+          onClose={() => setViewing(null)}
+        />
+      )}
+
+      <ModerationActionModal
         isOpen={confirmState.open}
         onClose={closeConfirm}
         onConfirm={handleConfirm}
         loading={actionLoading}
-        title={cfg.title}
-        message={cfg.message}
-        confirmLabel={cfg.confirmLabel}
-        confirmClass={cfg.confirmClass}
+        error={actionError}
+        action={MODAL_ACTION[confirmState.action]}
+        entityType={confirmReport?.entity_type}
+        targetName={confirmReport?.reported_user_name}
+        contentTitle={confirmReport?.entity_type === 'user' ? null : confirmReport?.entity_title}
+        note={confirmReport ? closesNote(confirmReport) : null}
+        notifyLabel={confirmState.action === 'dismiss' ? 'Avisar a quienes reportaron' : 'Notificar al usuario y a quienes reportaron'}
       />
     </div>
   );

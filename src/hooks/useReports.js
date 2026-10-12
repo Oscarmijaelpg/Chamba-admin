@@ -1,6 +1,7 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { usePagedQuery } from './usePagedQuery';
+import { invalidateModeration, unwrapModerationResult } from './useModeration';
 
 // Feed unificado de reportes (perfil/chamba/empleo/alerta) vía RPC server-side
 // `admin_reports_list` (joins polimórficos + total, gateado por is_admin), y las
@@ -27,27 +28,24 @@ export function useReports(status, entityType) {
   });
 
   const resolveMutation = useMutation({
-    mutationFn: async ({ reportId, action, notify = true }) => {
-      const { data, error } = await supabase.rpc('admin_resolve_report', {
+    mutationFn: async ({ reportId, action, notify = true, message = null }) => {
+      const res = await supabase.rpc('admin_resolve_report', {
         p_report_id: reportId,
         p_action: action,
         p_notify: notify,
+        // Vacío → el servidor usa su texto por defecto.
+        p_message: message?.trim() || null,
       });
-      if (error) throw error;
-      if (data && data.ok === false) throw new Error(data.code || 'No se pudo resolver el reporte');
-      return data;
+      return unwrapModerationResult(res, 'No se pudo resolver el reporte.');
     },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: KEY });
-      qc.invalidateQueries({ queryKey: ['chambas'] });
-      qc.invalidateQueries({ queryKey: ['jobs'] });
-      qc.invalidateQueries({ queryKey: ['users'] });
-    },
+    onSettled: () => invalidateModeration(qc),
   });
 
   // Devuelve la promesa (mutateAsync) para que la vista pueda await + toast.
-  const resolveReport = (reportId, action, notify = true) =>
-    resolveMutation.mutateAsync({ reportId, action, notify });
+  // Resuelve con { ok, status, resolution, closed }: `closed` es cuántos reportes
+  // del mismo contenido quedaron cerrados.
+  const resolveReport = (reportId, action, { notify = true, message = null } = {}) =>
+    resolveMutation.mutateAsync({ reportId, action, notify, message });
 
   return {
     reports: paged.rows,
@@ -61,4 +59,25 @@ export function useReports(status, entityType) {
     pageSize: paged.pageSize,
     resolveReport,
   };
+}
+
+// Trae el registro reportado por id para poder abrirlo desde la tarjeta. Los
+// `select` de chamba y empleo son los mismos que usan sus tablas, así los
+// modales de detalle reciben la misma forma de fila.
+export function useReportedEntity(entityType, entityId) {
+  return useQuery({
+    queryKey: [...KEY, 'entity', entityType, entityId],
+    enabled: !!entityType && !!entityId,
+    queryFn: async () => {
+      const table = { user: 'users', chamba: 'chambas', job: 'jobs', alert: 'alerts' }[entityType];
+      if (!table) return null;
+      const select = {
+        chamba: '*, employer:users(full_name, email)',
+        job: '*, employer:users!jobs_user_id_fkey(full_name, email)',
+      }[entityType] || '*';
+      const { data, error } = await supabase.from(table).select(select).eq('id', entityId).maybeSingle();
+      if (error) throw error;
+      return data; // null si ya no existe
+    },
+  });
 }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   X, MapPin, Building2, User, Calendar, FileText,
   CheckCircle, XCircle, Trash2, Mail, DollarSign, Clock, Pencil, Save, AlertTriangle, Globe,
+  EyeOff, MessageSquareWarning, Ban,
 } from 'lucide-react';
 
 const STATUS_COLOR = {
@@ -22,7 +23,9 @@ const STATUS_OPTIONS = ['open', 'active', 'closed', 'expired', 'rejected', 'pend
 const emptyToNull = (v) => (v === '' || v === undefined ? null : v);
 const numOrNull = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 
-export default function JobDetailModal({ job, onClose, onUpdate, onDelete }) {
+// `readOnly`: sin edición ni acciones (así se abre desde Reportes).
+// `onModerate(action)`: muestra las acciones de moderación (remove_content | warn | ban).
+export default function JobDetailModal({ job, onClose, onUpdate, onDelete, onModerate, readOnly = false }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({});
@@ -186,7 +189,7 @@ export default function JobDetailModal({ job, onClose, onUpdate, onDelete }) {
         </div>
 
         {/* Footer acciones */}
-        <div className="p-5 border-t border-slate-100 space-y-3">
+        {!readOnly && <div className="p-5 border-t border-slate-100 space-y-3">
           {editing ? (
             <div className="flex gap-3">
               <button
@@ -238,9 +241,31 @@ export default function JobDetailModal({ job, onClose, onUpdate, onDelete }) {
               >
                 <Trash2 size={17} /> Eliminar trabajo permanentemente
               </button>
+              {onModerate && (
+                <div className="pt-3 border-t border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Moderación (avisa al dueño y queda en su historial)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {job.status !== 'rejected' && (
+                    <button onClick={() => { onModerate('remove_content'); onClose(); }} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs bg-slate-800 text-white hover:bg-slate-900 transition-all whitespace-nowrap">
+                      <EyeOff size={14} /> Eliminar aviso
+                    </button>
+                    )}
+                    {job.user_id && (
+                    <>
+                    <button onClick={() => { onModerate('warn'); onClose(); }} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-100 transition-all whitespace-nowrap">
+                      <MessageSquareWarning size={14} /> Advertir al dueño
+                    </button>
+                    <button onClick={() => { onModerate('ban'); onClose(); }} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs bg-red-500 text-white hover:bg-red-600 transition-all whitespace-nowrap">
+                      <Ban size={14} /> Suspender al dueño
+                    </button>
+                    </>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
-        </div>
+        </div>}
       </div>
     </div>
   );

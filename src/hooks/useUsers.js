@@ -54,26 +54,8 @@ export function useUsers() {
     },
   });
 
-  // Parchea una fila en todas las páginas cacheadas (update optimista).
-  const patchRow = (id, fields) =>
-    qc.setQueriesData({ queryKey: KEY }, (old) =>
-      old?.rows ? { ...old, rows: old.rows.map((u) => (u.id === id ? { ...u, ...fields } : u)) } : old
-    );
-
-  const banMutation = useMutation({
-    mutationFn: async ({ userId, isBanned }) => {
-      const { error } = await supabase.from('users').update({ is_banned: isBanned }).eq('id', userId);
-      if (error) throw error;
-    },
-    onMutate: async ({ userId, isBanned }) => {
-      await qc.cancelQueries({ queryKey: KEY });
-      const snapshot = qc.getQueriesData({ queryKey: KEY });
-      patchRow(userId, { is_banned: isBanned });
-      return { snapshot };
-    },
-    onError: (_e, _v, ctx) => ctx?.snapshot?.forEach(([k, d]) => qc.setQueryData(k, d)),
-    onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
-  });
+  // Suspender / reactivar / advertir NO se hacen acá: pasan por la RPC
+  // `admin_moderate` (hook useModeration), que avisa al usuario y deja registro.
 
   const deleteMutation = useMutation({
     mutationFn: async (userId) => {
@@ -83,11 +65,7 @@ export function useUsers() {
     onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 
-  // Firma compatible con el componente: devuelven el error (o null).
-  const setBanned = async (userId, isBanned) => {
-    try { await banMutation.mutateAsync({ userId, isBanned }); return null; }
-    catch (e) { return e; }
-  };
+  // Firma compatible con el componente: devuelve el error (o null).
   const deleteUser = async (userId) => {
     try { await deleteMutation.mutateAsync(userId); return null; }
     catch (e) { return e; }
@@ -112,7 +90,6 @@ export function useUsers() {
     sort, setSort,
     dir, setDir,
     cities,
-    setBanned,
     deleteUser,
   };
 }
