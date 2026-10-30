@@ -296,7 +296,7 @@ export default function JobDetailModal({ job, onClose, onUpdate, onDelete, onMod
 
       {messaging && (
         <SendMessageModal
-          entityType="job" entityId={job.id}
+          entityType="job" entityId={job.id} userId={job.user_id}
           targetName={job.employer?.full_name} contentTitle={job.title}
           onClose={() => setMessaging(false)} onSent={onToast}
         />

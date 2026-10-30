@@ -237,7 +237,7 @@ export default function ChambaDetailModal({ chamba, onClose, onUpdate, onDelete,
 
       {messaging && (
         <SendMessageModal
-          entityType="chamba" entityId={chamba.id}
+          entityType="chamba" entityId={chamba.id} userId={chamba.employer_id}
           targetName={chamba.employer?.full_name} contentTitle={chamba.title}
           onClose={() => setMessaging(false)} onSent={onToast}
         />

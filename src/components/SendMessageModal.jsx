@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { X, Send, Smartphone } from 'lucide-react';
 import { useMessageUser } from '../hooks/useAdminActions';
+import EmailNotifyToggle from './EmailNotifyToggle';
 
 // Mensaje del equipo al usuario: le llega a la bandeja de notificaciones de la
 // app y como push. Si es sobre una chamba/empleo, al tocarlo abre esa
 // publicación. El destinatario lo resuelve el servidor.
 //
 // `entityType`: user | chamba | job · `entityId`: id de esa entidad.
-export default function SendMessageModal({ entityType, entityId, targetName, contentTitle, onClose, onSent }) {
+// `userId`: el destinatario (para saber si tiene push y ofrecer el correo).
+export default function SendMessageModal({ entityType, entityId, userId, targetName, contentTitle, onClose, onSent }) {
   const [message, setMessage] = useState('');
+  const [email, setEmail] = useState(false);
   const [error, setError] = useState('');
   const send = useMessageUser();
   const onContent = entityType === 'chamba' || entityType === 'job';
@@ -17,8 +20,8 @@ export default function SendMessageModal({ entityType, entityId, targetName, con
     setError('');
     if (!message.trim()) { setError('Escribí un mensaje.'); return; }
     try {
-      await send.mutateAsync({ entityType, entityId, message: message.trim() });
-      onSent?.(`Mensaje enviado${targetName ? ` a ${targetName}` : ''} · lo ves en Mensajes`);
+      const res = await send.mutateAsync({ entityType, entityId, message: message.trim(), email });
+      onSent?.(`Mensaje enviado${targetName ? ` a ${targetName}` : ''}${res?.emailed ? ' y por correo' : ''} · lo ves en Mensajes`);
       onClose();
     } catch (e) {
       setError(e.message || 'No se pudo enviar.');
@@ -58,6 +61,7 @@ export default function SendMessageModal({ entityType, entityId, targetName, con
             placeholder="Escribí el mensaje…"
             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
+          <EmailNotifyToggle userId={userId} checked={email} onChange={setEmail} />
           <div className="flex justify-between text-[11px] text-slate-400">
             <span className="text-red-500 font-semibold">{error}</span>
             <span>{message.length}/500</span>

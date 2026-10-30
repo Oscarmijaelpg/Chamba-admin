@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MessagesSquare, Send, ArrowLeft, MessageCircle, Mail, MapPin, Paperclip, User, Search } from 'lucide-react';
 import { useSupportChats, useChatMessages, useChatReply } from '../hooks/useSupportChats';
+import EmailNotifyToggle from './EmailNotifyToggle';
 
 const waLink = (num) => `https://wa.me/${String(num || '').replace(/[^0-9]/g, '')}`;
 
@@ -108,6 +109,8 @@ function Thread({ chat, onBack }) {
   const reply = useChatReply(chat.id);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
+  const [email, setEmail] = useState(false);
+  const [sentNote, setSentNote] = useState('');
   const endRef = useRef(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }); }, [messages.length, chat.id]);
@@ -116,8 +119,12 @@ function Thread({ chat, onBack }) {
     const t = text.trim();
     if (!t) return;
     setError('');
-    try { await reply.mutateAsync(t); setText(''); }
-    catch { setError('No se pudo enviar. Probá de nuevo.'); }
+    try {
+      const res = await reply.mutateAsync({ message: t, email });
+      setText('');
+      setSentNote(res?.emailed ? 'Enviado también por correo' : '');
+      if (res?.emailed) setTimeout(() => setSentNote(''), 4000);
+    } catch { setError('No se pudo enviar. Probá de nuevo.'); }
   };
 
   return (
@@ -167,6 +174,10 @@ function Thread({ chat, onBack }) {
 
       <div className="p-3 border-t border-slate-100">
         {error && <p className="text-xs text-red-500 mb-1.5">{error}</p>}
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <EmailNotifyToggle key={chat.id} userId={chat.user_id} checked={email} onChange={setEmail} compact />
+          {sentNote && <span className="text-[11px] font-semibold text-green-600">{sentNote}</span>}
+        </div>
         <div className="flex gap-2 items-end">
           <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}

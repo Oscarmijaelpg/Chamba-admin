@@ -50,8 +50,8 @@ export function useChatMessages(chatId) {
 export function useChatReply(chatId) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (message) => {
-      const { data, error } = await supabase.rpc('admin_chat_reply', { p_chat_id: chatId, p_message: message });
+    mutationFn: async ({ message, email = false }) => {
+      const { data, error } = await supabase.rpc('admin_chat_reply', { p_chat_id: chatId, p_message: message, p_email: email });
       if (error) throw error;
       if (data?.ok === false) throw new Error(data.code);
       return data;

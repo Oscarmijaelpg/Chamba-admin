@@ -328,7 +328,7 @@ export default function UserDetailModal({ user, onClose, onWarn, onBan, onUnban,
       </div>
 
       {messaging && (
-        <SendMessageModal entityType="user" entityId={user.id} targetName={u.full_name}
+        <SendMessageModal entityType="user" entityId={user.id} userId={user.id} targetName={u.full_name}
           onClose={() => setMessaging(false)} onSent={showToast} />
       )}
     </div>

@@ -49,9 +49,24 @@ export function useContentViews(entityType, entityId) {
 }
 
 export function useMessageUser() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ entityType, entityId, message }) =>
-      callRpc('admin_message_user', { p_entity_type: entityType, p_entity_id: entityId, p_message: message }),
+    mutationFn: ({ entityType, entityId, message, email = false }) =>
+      callRpc('admin_message_user', {
+        p_entity_type: entityType, p_entity_id: entityId, p_message: message, p_email: email,
+      }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['support_chats'] }),
+  });
+}
+
+// Por dónde le llega algo al usuario: dispositivos con push (app), navegador
+// con push y su correo. Sirve para sugerir avisar por correo.
+export function useUserReach(userId) {
+  return useQuery({
+    queryKey: ['user_reach', userId],
+    enabled: !!userId,
+    staleTime: 60_000,
+    queryFn: () => callRpc('admin_user_reach', { p_user_id: userId }),
   });
 }
 
