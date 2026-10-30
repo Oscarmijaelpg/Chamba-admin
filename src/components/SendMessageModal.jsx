@@ -18,7 +18,7 @@ export default function SendMessageModal({ entityType, entityId, targetName, con
     if (!message.trim()) { setError('Escribí un mensaje.'); return; }
     try {
       await send.mutateAsync({ entityType, entityId, message: message.trim() });
-      onSent?.(`Mensaje enviado${targetName ? ` a ${targetName}` : ''}`);
+      onSent?.(`Mensaje enviado${targetName ? ` a ${targetName}` : ''} · lo ves en Mensajes`);
       onClose();
     } catch (e) {
       setError(e.message || 'No se pudo enviar.');
@@ -45,8 +45,8 @@ export default function SendMessageModal({ entityType, entityId, targetName, con
           <div className="flex gap-2 bg-slate-50 rounded-xl p-3">
             <Smartphone size={16} className="text-slate-400 shrink-0 mt-0.5" />
             <p className="text-xs text-slate-500 leading-relaxed">
-              Le llega como notificación a la app (y al navegador si la activó), firmado como
-              <b> «Mensaje del equipo de Conecta2»</b>.{onContent ? ' Al tocarlo se abre esta publicación.' : ''}
+              Le llega como <b>chat de «Equipo Conecta2»</b> en la app (con aviso push si lo tiene activado).
+              Te puede contestar ahí mismo y lo ves en <b>Mensajes</b>.{onContent ? ' El mensaje arranca con «Sobre …» para que sepa de qué publicación hablás.' : ''}
             </p>
           </div>
           <textarea

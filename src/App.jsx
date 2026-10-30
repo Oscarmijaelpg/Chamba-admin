@@ -17,12 +17,14 @@ import {
   Menu,
   X,
   Building2,
+  MessagesSquare,
 } from 'lucide-react';
 
 import LoginView from './components/LoginView';
 import DarkModeToggle from './components/DarkModeToggle';
 import NotificationsBell from './components/NotificationsBell';
 import { useAuth } from './hooks/useAuth';
+import { useSupportChats } from './hooks/useSupportChats';
 
 // Vistas cargadas bajo demanda (code-splitting por ruta): cada una es su propio
 // chunk, así recharts y demás no entran al bundle inicial hasta visitar su vista.
@@ -40,6 +42,7 @@ const AlertsConfig = lazy(() => import('./components/AlertsConfig'));
 const ActivityView = lazy(() => import('./components/ActivityView'));
 const TrackedLinksView = lazy(() => import('./components/TrackedLinksView'));
 const ContentViewsView = lazy(() => import('./components/ContentViewsView'));
+const MessagesView = lazy(() => import('./components/MessagesView'));
 
 // Fallback mientras carga el chunk de la vista.
 const RouteFallback = () => (
@@ -55,6 +58,7 @@ const NAV_GROUPS = [
     items: [
       { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
       { path: '/users',     icon: Users,           label: 'Usuarios' },
+      { path: '/mensajes',  icon: MessagesSquare,  label: 'Mensajes', badge: 'support' },
     ],
   },
   {
@@ -98,6 +102,9 @@ const NAV_GROUPS = [
 export default function App() {
   const { user, isAdmin, loading: authLoading, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Contador de chats de soporte sin leer (badge de "Mensajes" en el menú).
+  const { data: supportChats = [] } = useSupportChats({ refetchInterval: 30_000, enabled: !!user && isAdmin });
+  const supportUnread = supportChats.reduce((n, c) => n + Number(c.unread || 0), 0);
 
   if (authLoading) {
     return (
@@ -194,7 +201,12 @@ export default function App() {
                     {({ isActive }) => (
                       <>
                         <item.icon size={18} className={isActive ? 'text-dark' : 'text-slate-500 group-hover:text-primary-400 transition-colors'} />
-                        {item.label}
+                        <span className="flex-1">{item.label}</span>
+                        {item.badge === 'support' && supportUnread > 0 && (
+                          <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black flex items-center justify-center ${isActive ? 'bg-dark text-primary-400' : 'bg-primary-500 text-dark'}`}>
+                            {supportUnread > 99 ? '99+' : supportUnread}
+                          </span>
+                        )}
                       </>
                     )}
                   </NavLink>
@@ -250,6 +262,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardView user={user} />} />
           <Route path="/users" element={<UsersTable />} />
+          <Route path="/mensajes" element={<MessagesView />} />
           <Route path="/chambas" element={<ChambasTable />} />
           <Route path="/jobs" element={<JobsTable />} />
           <Route path="/wallet" element={<FinanceView />} />
