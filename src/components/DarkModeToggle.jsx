@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Moon, Sun } from 'lucide-react';
 
-export default function DarkModeToggle() {
+export default function DarkModeToggle({ className = 'p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition' }) {
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
@@ -30,10 +30,10 @@ export default function DarkModeToggle() {
   return (
     <button
       onClick={handleToggle}
-      className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+      className={className}
       title={darkMode ? 'Modo claro' : 'Modo oscuro'}
     >
-      {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+      {darkMode ? <Sun size={18} /> : <Moon size={18} />}
     </button>
   );
 }

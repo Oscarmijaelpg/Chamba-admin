@@ -22,7 +22,10 @@ const STATUS_LABEL = {
   rejected: 'Rechazado', pending: 'Pendiente', pending_review: 'En revisión', draft: 'Borrador',
 };
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, paused }) {
+  if (paused) {
+    return <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap bg-amber-50 text-amber-600">Pausado</span>;
+  }
   return (
     <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap ${STATUS_COLOR[status] ?? 'bg-slate-50 text-slate-400'}`}>
       {STATUS_LABEL[status] ?? status}
@@ -157,6 +160,7 @@ export default function JobsTable() {
             <option value="pending_review">En revisión</option>
             <option value="pending">Pendientes</option>
             <option value="closed">Cerrados</option>
+            <option value="paused">Pausados</option>
             <option value="expired">Expirados</option>
           </select>
           <select
@@ -233,7 +237,7 @@ export default function JobsTable() {
                         </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <StatusBadge status={job.status} />
+                        <StatusBadge status={job.status} paused={job.hidden_reason === 'paused'} />
                       </td>
                       <td className="px-5 py-3.5 text-xs text-slate-400 whitespace-nowrap">
                         {new Date(job.created_at).toLocaleDateString('es-BO')}
@@ -287,6 +291,7 @@ export default function JobsTable() {
           onUpdate={updateJob}
           onDelete={(id) => { openDeleteConfirm(id); setSelectedJob(null); }}
           onModerate={(action) => openModeration(selectedJob, action)}
+          onToast={(msg) => showToast(msg)}
         />
       )}
 
@@ -324,7 +329,7 @@ function JobCard({ job, onOpen }) {
           )}
         </div>
         <div className="shrink-0 flex flex-col items-end gap-2">
-          <StatusBadge status={job.status} />
+          <StatusBadge status={job.status} paused={job.hidden_reason === 'paused'} />
           <ChevronRight size={14} className="text-slate-300" />
         </div>
       </div>

@@ -28,7 +28,8 @@ export function useJobs() {
         .range(from, to);
       const term = sanitize(search);
       if (term) q = q.or(`title.ilike.%${term}%,company.ilike.%${term}%`);
-      if (status !== 'all') q = q.eq('status', status);
+      if (status === 'paused') q = q.eq('hidden_reason', 'paused');
+      else if (status !== 'all') q = q.eq('status', status);
       if (city !== 'all') q = q.eq('city', city);
       if (source === 'external') q = q.eq('is_external', true);
       else if (source === 'own') q = q.eq('is_external', false);

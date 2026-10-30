@@ -27,6 +27,7 @@ export function useChambas() {
       if (term) q = q.or(`title.ilike.%${term}%,description.ilike.%${term}%`);
       // 'all' oculta las borradas lógicamente; un estado puntual las muestra.
       if (status === 'all') q = q.neq('status', 'deleted');
+      else if (status === 'paused') q = q.eq('hidden_reason', 'paused');
       else q = q.eq('status', status);
       if (city !== 'all') q = q.eq('city', city);
       const { data, count, error } = await q;

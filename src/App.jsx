@@ -15,7 +15,8 @@ import {
   Link2,
   Eye,
   Menu,
-  X
+  X,
+  Building2,
 } from 'lucide-react';
 
 import LoginView from './components/LoginView';
@@ -47,20 +48,51 @@ const RouteFallback = () => (
   </div>
 );
 
-const NAV_ITEMS = [
-  { path: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/users',      icon: Users,           label: 'Usuarios' },
-  { path: '/chambas',    icon: Briefcase,       label: 'Chambas' },
-  { path: '/jobs',       icon: Briefcase,       label: 'Trabajos' },
-  { path: '/wallet',     icon: Wallet,          label: 'Finanzas' },
-  { path: '/disputas',   icon: Scale,           label: 'Disputas' },
-  { path: '/reports',    icon: AlertTriangle,   label: 'Reportes' },
-  { path: '/audit',      icon: Shield,          label: 'Auditoría' },
-  { path: '/analytics',  icon: TrendingUp,      label: 'Analytics' },
-  { path: '/enlaces',    icon: Link2,           label: 'Enlaces' },
-  { path: '/vistas',     icon: Eye,             label: 'Vistas' },
-  { path: '/alerts',     icon: Bell,            label: 'Alertas' },
-  { path: '/settings',   icon: Settings,        label: 'Ajustes' },
+// Menú agrupado por tarea: qué se publica, la plata, la moderación y los números.
+const NAV_GROUPS = [
+  {
+    label: 'General',
+    items: [
+      { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+      { path: '/users',     icon: Users,           label: 'Usuarios' },
+    ],
+  },
+  {
+    label: 'Publicaciones',
+    items: [
+      { path: '/chambas', icon: Briefcase, label: 'Chambas' },
+      { path: '/jobs',    icon: Building2, label: 'Trabajos' },
+    ],
+  },
+  {
+    label: 'Dinero',
+    items: [
+      { path: '/wallet',   icon: Wallet, label: 'Finanzas' },
+      { path: '/disputas', icon: Scale,  label: 'Disputas' },
+    ],
+  },
+  {
+    label: 'Moderación',
+    items: [
+      { path: '/reports', icon: AlertTriangle, label: 'Reportes' },
+      { path: '/audit',   icon: Shield,        label: 'Auditoría' },
+    ],
+  },
+  {
+    label: 'Análisis',
+    items: [
+      { path: '/analytics', icon: TrendingUp, label: 'Analytics' },
+      { path: '/vistas',    icon: Eye,        label: 'Vistas' },
+      { path: '/enlaces',   icon: Link2,      label: 'Enlaces' },
+    ],
+  },
+  {
+    label: 'Configuración',
+    items: [
+      { path: '/alerts',   icon: Bell,     label: 'Alertas' },
+      { path: '/settings', icon: Settings, label: 'Ajustes' },
+    ],
+  },
 ];
 
 export default function App() {
@@ -118,50 +150,77 @@ export default function App() {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar: fondo oscuro de marca para que el verde contraste; el ítem
+          activo va como el CTA de la app (verde con texto oscuro). */}
       <aside className={`
         fixed md:sticky top-0 left-0 h-screen z-30
-        w-64 bg-white border-r border-slate-200 flex flex-col
+        w-64 bg-dark text-slate-300 flex flex-col
         transition-transform duration-300 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
-        <div className="p-6 flex items-center justify-between">
-          <h1 className="text-2xl font-black text-primary-600 tracking-tighter">
-            CHAMBA <span className="text-slate-400 text-xs font-bold uppercase tracking-widest block">Admin Dash</span>
-          </h1>
-          <button onClick={closeSidebar} className="md:hidden p-1 text-slate-400 hover:text-slate-600">
+        <div className="px-5 pt-6 pb-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
+              <span className="text-dark font-black text-sm tracking-tight">C2</span>
+            </div>
+            <div className="leading-tight">
+              <p className="text-white font-black text-lg tracking-tight">Conecta2</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-400">Panel admin</p>
+            </div>
+          </div>
+          <button onClick={closeSidebar} className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10">
             <X size={20} />
           </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map(item => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={closeSidebar}
-              className={({ isActive }) =>
-                `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
-                  isActive
-                    ? 'bg-primary-500 text-white shadow-lg shadow-primary-200'
-                    : 'text-slate-500 hover:bg-slate-100'
-                }`
-              }
-            >
-              <item.icon size={20} />
-              {item.label}
-            </NavLink>
+        <nav className="flex-1 px-3 pb-4 overflow-y-auto space-y-5 [scrollbar-width:thin]">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">{group.label}</p>
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={closeSidebar}
+                    className={({ isActive }) =>
+                      `group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+                        isActive
+                          ? 'bg-primary-500 text-dark font-bold shadow-lg shadow-primary-500/20'
+                          : 'text-slate-300 font-medium hover:bg-white/[0.06] hover:text-white'
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <item.icon size={18} className={isActive ? 'text-dark' : 'text-slate-500 group-hover:text-primary-400 transition-colors'} />
+                        {item.label}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 space-y-3">
-          <DarkModeToggle />
+        <div className="p-3 border-t border-white/10 space-y-2">
+          <div className="flex items-center gap-3 px-2 py-2">
+            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-primary-400 font-bold text-sm shrink-0">
+              {(user?.email?.[0] ?? 'A').toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white truncate">{user?.email ?? 'Admin'}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Super admin</p>
+            </div>
+            <DarkModeToggle className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition" />
+          </div>
           <button
             onClick={signOut}
-            className="flex items-center gap-3 px-4 py-3 text-red-500 font-medium w-full hover:bg-red-50 rounded-xl transition-all"
+            className="flex items-center gap-3 px-3 py-2.5 text-sm text-slate-400 font-medium w-full hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all"
           >
-            <LogOut size={20} />
-            Salir
+            <LogOut size={18} />
+            Cerrar sesión
           </button>
         </div>
       </aside>
@@ -183,15 +242,6 @@ export default function App() {
 
           <div className="flex items-center gap-2 shrink-0">
             <NotificationsBell userId={user?.id} />
-            <div className="hidden sm:flex items-center gap-3 bg-white p-2 pr-4 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="w-9 h-9 bg-primary-500 rounded-xl flex items-center justify-center text-white font-bold text-sm">
-                {(user?.email?.[0] ?? 'A').toUpperCase()}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-800 max-w-[120px] truncate">{user?.email ?? 'Admin'}</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Super Admin</p>
-              </div>
-            </div>
           </div>
         </header>
 

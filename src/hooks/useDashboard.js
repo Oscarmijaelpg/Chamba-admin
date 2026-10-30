@@ -47,7 +47,9 @@ export function useDashboard(user) {
   const handleApprove = (id) => txMutation.mutate({ id, status: 'completed' });
   const handleReject = (id) => {
     if (!window.confirm('¿Rechazar esta transacción?')) return;
-    txMutation.mutate({ id, status: 'failed' });
+    // 'cancelled' (no 'failed'): es el estado que el trigger handle_wallet_update
+    // entiende — devuelve la reserva de un retiro y le avisa al usuario.
+    txMutation.mutate({ id, status: 'cancelled' });
   };
 
   return {

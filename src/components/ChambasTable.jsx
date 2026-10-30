@@ -17,7 +17,10 @@ const STATUS_LABEL = {
   open: 'Abierta', in_progress: 'En progreso', completed: 'Finalizada', cancelled: 'Cancelada', deleted: 'Borrada',
 };
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, paused }) {
+  if (paused) {
+    return <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap bg-amber-50 text-amber-600">Pausada</span>;
+  }
   return (
     <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap ${STATUS_COLOR[status] ?? 'bg-slate-50 text-slate-400'}`}>
       {STATUS_LABEL[status] ?? status}
@@ -121,6 +124,7 @@ export default function ChambasTable() {
             <option value="in_progress">En progreso</option>
             <option value="completed">Finalizadas</option>
             <option value="cancelled">Canceladas</option>
+            <option value="paused">Pausadas</option>
             <option value="deleted">Borradas</option>
           </select>
           <select className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-0" value={cityFilter} onChange={(e) => setCity(e.target.value)}>
@@ -156,7 +160,7 @@ export default function ChambasTable() {
                     {c.description && <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">{c.description}</p>}
                   </div>
                   <div className="shrink-0 flex flex-col items-end gap-2">
-                    <StatusBadge status={c.status} />
+                    <StatusBadge status={c.status} paused={c.hidden_reason === 'paused'} />
                     <ChevronRight size={14} className="text-slate-300" />
                   </div>
                 </div>
@@ -198,7 +202,7 @@ export default function ChambasTable() {
                       <td className="px-5 py-3.5">
                         <span className="flex items-center gap-1 text-sm text-slate-500"><MapPin size={12} className="text-slate-300 shrink-0" /> {c.city || '-'}</span>
                       </td>
-                      <td className="px-5 py-3.5"><StatusBadge status={c.status} /></td>
+                      <td className="px-5 py-3.5"><StatusBadge status={c.status} paused={c.hidden_reason === 'paused'} /></td>
                       <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-0.5">
                           {c.status !== 'deleted' && (
@@ -235,6 +239,7 @@ export default function ChambasTable() {
           onUpdate={updateChamba}
           onDelete={(id) => { setConfirm({ open: true, id }); setSelected(null); }}
           onModerate={(action) => openModeration(selected, action)}
+          onToast={(msg) => showToast(msg)}
         />
       )}
 

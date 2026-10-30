@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Briefcase, Wallet, TrendingUp, CheckCircle2, XCircle } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard';
 import UserGrowthChart from './UserGrowthChart';
+import ApproveDepositModal from './ApproveDepositModal';
 
 const StatCard = ({ title, value, icon: Icon, color, sub }) => (
   <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-100">
@@ -20,6 +21,9 @@ const StatCard = ({ title, value, icon: Icon, color, sub }) => (
 );
 
 export default function DashboardView({ user }) {
+  // Recarga pendiente que se está aprobando (pide el monto que realmente llegó).
+  const [approving, setApproving] = useState(null);
+  const [toast, setToast] = useState(null);
   const navigate = useNavigate();
   const { stats, pendingTx, recentActivity, handleApprove, handleReject } = useDashboard(user);
 
@@ -66,7 +70,7 @@ export default function DashboardView({ user }) {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-2">
-                        <button onClick={() => handleApprove(tx.id)} className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-all" title="Aprobar"><CheckCircle2 size={18} /></button>
+                        <button onClick={() => (tx.type === 'deposit' ? setApproving(tx) : handleApprove(tx.id))} className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-all" title="Aprobar"><CheckCircle2 size={18} /></button>
                         <button onClick={() => handleReject(tx.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Rechazar"><XCircle size={18} /></button>
                       </div>
                     </td>
@@ -106,6 +110,16 @@ export default function DashboardView({ user }) {
           </button>
         </div>
       </div>
+      {approving && (
+        <ApproveDepositModal
+          tx={approving}
+          onClose={() => setApproving(null)}
+          onToast={(_type, msg) => { setToast(msg); setTimeout(() => setToast(null), 4000); }}
+        />
+      )}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[60] px-5 py-3.5 rounded-2xl shadow-xl text-sm font-semibold bg-green-500 text-white">{toast}</div>
+      )}
     </div>
   );
 }

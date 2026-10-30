@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFinance } from '../hooks/useFinance';
 import Pagination from './Pagination';
+import ApproveDepositModal from './ApproveDepositModal';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts';
@@ -140,6 +141,7 @@ function RechargeModal({ onClose, onCredit, crediting, searchUsers, onToast }) {
 export default function FinanceView() {
   const [view, setView] = useState('all');
   const [showRecharge, setShowRecharge] = useState(false);
+  const [approving, setApproving] = useState(null); // recarga pendiente a aprobar
   const [toast, setToast] = useState(null);
   const {
     transactions, pendingWithdrawals, summary, loading, isFetching,
@@ -292,7 +294,7 @@ export default function FinanceView() {
                         <div className="flex justify-center gap-2">
                           {tx.status === 'pending' ? (
                             <>
-                              <button onClick={() => approveTransaction(tx.id)} className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 transition-all">Aprobar</button>
+                              <button onClick={() => (tx.type === 'deposit' ? setApproving(tx) : approveTransaction(tx.id))} className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 transition-all">Aprobar</button>
                               <button onClick={() => rejectTransaction(tx.id)} className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold hover:bg-red-200 transition-all">Rechazar</button>
                             </>
                           ) : <span className="text-slate-300 text-xs">—</span>}
@@ -317,9 +319,18 @@ export default function FinanceView() {
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} isFetching={isFetching} />
       </div>
 
+      {approving && (
+        <ApproveDepositModal
+          tx={approving}
+          onClose={() => setApproving(null)}
+          onToast={showToast}
+        />
+      )}
+
       {showRecharge && (
         <RechargeModal onClose={() => setShowRecharge(false)} onCredit={creditWallet} crediting={crediting} searchUsers={searchUsers} onToast={showToast} />
       )}
     </div>
   );
 }
+

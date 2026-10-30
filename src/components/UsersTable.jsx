@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useUsers } from '../hooks/useUsers';
-import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2, Cake, Clock, Tag, MessageSquareWarning } from 'lucide-react';
+import { Search, Shield, ShieldAlert, ShieldCheck, Star, MapPin, MoreVertical, Users, Trash2, Cake, Clock, Tag, MessageSquareWarning, MessageCircle
+} from 'lucide-react';
 import { relTime } from '../lib/activity';
 import { useModerationDialog } from '../hooks/useModeration';
 import ConfirmModal from './ConfirmModal';
@@ -111,7 +112,7 @@ export default function UsersTable() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input
             type="text"
-            placeholder="Buscar por nombre o email..."
+            placeholder="Buscar por nombre, email, usuario o WhatsApp..."
             className="w-full pl-10 pr-4 py-2.5 bg-white rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -224,6 +225,7 @@ export default function UsersTable() {
                           <div className="min-w-0">
                             <p className="font-bold text-slate-800 text-sm truncate">{user.full_name}</p>
                             <p className="text-xs text-slate-400 truncate max-w-[180px]">{user.email}</p>
+                            <WhatsappLink number={user.whatsapp} />
                             <PreferenceChips preferences={user.preferences} max={2} className="mt-1" />
                           </div>
                         </div>
@@ -399,6 +401,7 @@ function UserCard({ user, onView, onWarn, onBan, onUnban, onDelete }) {
         <span className="text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg font-semibold">
           Bs. {user.wallet_balance || 0}
         </span>
+        <WhatsappLink number={user.whatsapp} chip />
       </div>
 
       {/* Preferencias de categorías guardadas */}
@@ -515,5 +518,24 @@ function StatusBadges({ user }) {
         </span>
       )}
     </div>
+  );
+}
+
+// WhatsApp que cargó el usuario (user_private_data, vía admin_users_list).
+function WhatsappLink({ number, chip = false }) {
+  if (!number) return null;
+  const digits = String(number).replace(/[^0-9]/g, '');
+  return (
+    <a
+      href={`https://wa.me/${digits}`}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className={chip
+        ? 'flex items-center gap-1 text-[11px] font-semibold text-green-700 bg-green-50 px-2 py-1 rounded-lg'
+        : 'inline-flex items-center gap-1 text-[11px] font-semibold text-green-600 hover:underline mt-0.5'}
+    >
+      <MessageCircle size={10} /> {number}
+    </a>
   );
 }

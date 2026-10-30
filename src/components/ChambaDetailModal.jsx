@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import {
   X, MapPin, User, Mail, Calendar, FileText, DollarSign,
   ShieldCheck, Globe, Pencil, Save, Trash2, CheckCircle, XCircle, AlertTriangle,
-  EyeOff, MessageSquareWarning, Ban,
+  EyeOff, MessageSquareWarning, Ban, Send, PauseCircle, PlayCircle, Star,
 } from 'lucide-react';
+import SendMessageModal from './SendMessageModal';
+import { ViewsPanel, PauseModal } from './ContentAdminTools';
 
 const STATUS_COLOR = {
   open:        'bg-green-50 text-green-600 border-green-100',
@@ -23,13 +25,18 @@ const inputCls = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-
 
 // `readOnly`: sin edición ni acciones (así se abre desde Reportes).
 // `onModerate(action)`: muestra las acciones de moderación (remove_content | warn | ban).
-export default function ChambaDetailModal({ chamba, onClose, onUpdate, onDelete, onModerate, readOnly = false }) {
+// `onToast(msg)`: confirma acciones como enviar mensaje o pausar.
+export default function ChambaDetailModal({ chamba, onClose, onUpdate, onDelete, onModerate, onToast, readOnly = false }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({});
+  const [messaging, setMessaging] = useState(false);
+  const [pausing, setPausing] = useState(false);
 
   if (!chamba) return null;
 
+  // Pausada desde el panel: status 'closed' con hidden_reason 'paused'.
+  const isPaused = chamba.hidden_reason === 'paused';
   const isInternal = chamba.payment_method === 'internal';
   const published = new Date(chamba.created_at).toLocaleDateString('es-BO', { year: 'numeric', month: 'long', day: 'numeric' });
   const images = (chamba.images ?? []).filter(Boolean);
@@ -75,9 +82,20 @@ export default function ChambaDetailModal({ chamba, onClose, onUpdate, onDelete,
           <div className="min-w-0">
             <h2 className="font-bold text-slate-800 text-lg leading-snug">{editing ? 'Editar chamba' : chamba.title}</h2>
             <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_COLOR[chamba.status] ?? 'bg-slate-50 text-slate-400'}`}>
-                {STATUS_LABEL[chamba.status] ?? chamba.status}
-              </span>
+              {isPaused ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-amber-50 text-amber-600 border-amber-100">
+                  <PauseCircle size={11} /> Pausada
+                </span>
+              ) : (
+                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_COLOR[chamba.status] ?? 'bg-slate-50 text-slate-400'}`}>
+                  {STATUS_LABEL[chamba.status] ?? chamba.status}
+                </span>
+              )}
+              {chamba.is_highlighted && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-600">
+                  <Star size={11} className="fill-current" /> Destacada
+                </span>
+              )}
               <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${isInternal ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
                 {isInternal ? <><ShieldCheck size={11} /> Pago protegido</> : <><Globe size={11} /> Pago externo</>}
               </span>
@@ -131,6 +149,8 @@ export default function ChambaDetailModal({ chamba, onClose, onUpdate, onDelete,
                 <InfoCard icon={<Calendar size={14} />} label="Publicada" value={published} />
               </div>
 
+              <ViewsPanel entityType="chamba" entityId={chamba.id} />
+
               {chamba.cancel_reason && (
                 <div className="flex gap-2 bg-red-50 border border-red-100 rounded-xl p-3">
                   <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
@@ -166,7 +186,17 @@ export default function ChambaDetailModal({ chamba, onClose, onUpdate, onDelete,
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
-                {chamba.status === 'open' ? (
+                {chamba.employer_id && (
+                  <button onClick={() => setMessaging(true)} className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-dark text-white hover:bg-slate-800 transition-all">
+                    <Send size={16} /> Enviar mensaje
+                  </button>
+                )}
+                {(chamba.status === 'open' || isPaused) && (
+                  <button onClick={() => setPausing(true)} className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm border transition-all ${isPaused ? 'bg-green-50 text-green-600 hover:bg-green-100 border-green-100' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border-amber-100'}`}>
+                    {isPaused ? <><PlayCircle size={17} /> Reanudar</> : <><PauseCircle size={17} /> Pausar</>}
+                  </button>
+                )}
+                {isPaused ? null : chamba.status === 'open' ? (
                   <button onClick={() => changeStatus('cancelled')} className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-100 transition-all">
                     <XCircle size={17} /> Cancelar
                   </button>
@@ -204,6 +234,22 @@ export default function ChambaDetailModal({ chamba, onClose, onUpdate, onDelete,
           )}
         </div>}
       </div>
+
+      {messaging && (
+        <SendMessageModal
+          entityType="chamba" entityId={chamba.id}
+          targetName={chamba.employer?.full_name} contentTitle={chamba.title}
+          onClose={() => setMessaging(false)} onSent={onToast}
+        />
+      )}
+      {pausing && (
+        <PauseModal
+          entityType="chamba" entityId={chamba.id} title={chamba.title}
+          paused={isPaused} hasOwner={!!chamba.employer_id}
+          onClose={() => setPausing(false)}
+          onDone={(msg) => { onToast?.(msg); onClose(); }}
+        />
+      )}
     </div>
   );
 }

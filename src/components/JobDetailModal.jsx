@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import {
   X, MapPin, Building2, User, Calendar, FileText,
   CheckCircle, XCircle, Trash2, Mail, DollarSign, Clock, Pencil, Save, AlertTriangle, Globe,
-  EyeOff, MessageSquareWarning, Ban,
+  EyeOff, MessageSquareWarning, Ban, Send, PauseCircle, PlayCircle,
 } from 'lucide-react';
+import SendMessageModal from './SendMessageModal';
+import { ViewsPanel, PauseModal } from './ContentAdminTools';
 
 const STATUS_COLOR = {
   open:           'bg-green-50 text-green-600 border-green-100',
@@ -25,12 +27,18 @@ const numOrNull = (v) => (v === '' || v === null || v === undefined ? null : Num
 
 // `readOnly`: sin edición ni acciones (así se abre desde Reportes).
 // `onModerate(action)`: muestra las acciones de moderación (remove_content | warn | ban).
-export default function JobDetailModal({ job, onClose, onUpdate, onDelete, onModerate, readOnly = false }) {
+// `onToast(msg)`: confirma acciones como enviar mensaje o pausar.
+export default function JobDetailModal({ job, onClose, onUpdate, onDelete, onModerate, onToast, readOnly = false }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({});
+  const [messaging, setMessaging] = useState(false);
+  const [pausing, setPausing] = useState(false);
 
   if (!job) return null;
+
+  // Pausado desde el panel: status 'closed' con hidden_reason 'paused'.
+  const isPaused = job.hidden_reason === 'paused';
 
   const isPublished = job.status === 'open' || job.status === 'active';
   const published = new Date(job.created_at).toLocaleDateString('es-BO', {
@@ -89,9 +97,15 @@ export default function JobDetailModal({ job, onClose, onUpdate, onDelete, onMod
               {editing ? 'Editar trabajo' : job.title}
             </h2>
             <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_COLOR[job.status] ?? 'bg-slate-50 text-slate-400'}`}>
-                {STATUS_LABEL[job.status] ?? job.status}
-              </span>
+              {isPaused ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-amber-50 text-amber-600 border-amber-100">
+                  <PauseCircle size={11} /> Pausado
+                </span>
+              ) : (
+                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_COLOR[job.status] ?? 'bg-slate-50 text-slate-400'}`}>
+                  {STATUS_LABEL[job.status] ?? job.status}
+                </span>
+              )}
               {job.is_external && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600">
                   <Globe size={11} /> Externo{job.source ? ` · ${job.source}` : ''}
@@ -163,6 +177,8 @@ export default function JobDetailModal({ job, onClose, onUpdate, onDelete, onMod
                 )}
               </div>
 
+              <ViewsPanel entityType="job" entityId={job.id} />
+
               {/* Descripción */}
               {job.description && (
                 <div>
@@ -210,8 +226,18 @@ export default function JobDetailModal({ job, onClose, onUpdate, onDelete, onMod
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
+                {job.user_id && (
+                  <button onClick={() => setMessaging(true)} className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-dark text-white hover:bg-slate-800 transition-all">
+                    <Send size={16} /> Enviar mensaje
+                  </button>
+                )}
+                {(isPublished || isPaused) && (
+                  <button onClick={() => setPausing(true)} className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm border transition-all ${isPaused ? 'bg-green-50 text-green-600 hover:bg-green-100 border-green-100' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border-amber-100'}`}>
+                    {isPaused ? <><PlayCircle size={17} /> Reanudar</> : <><PauseCircle size={17} /> Pausar</>}
+                  </button>
+                )}
                 {/* Aprobar / Cerrar */}
-                {isPublished ? (
+                {isPaused ? null : isPublished ? (
                   <button
                     onClick={() => changeStatus('closed')}
                     className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-100 transition-all"
@@ -267,6 +293,22 @@ export default function JobDetailModal({ job, onClose, onUpdate, onDelete, onMod
           )}
         </div>}
       </div>
+
+      {messaging && (
+        <SendMessageModal
+          entityType="job" entityId={job.id}
+          targetName={job.employer?.full_name} contentTitle={job.title}
+          onClose={() => setMessaging(false)} onSent={onToast}
+        />
+      )}
+      {pausing && (
+        <PauseModal
+          entityType="job" entityId={job.id} title={job.title}
+          paused={isPaused} hasOwner={!!job.user_id}
+          onClose={() => setPausing(false)}
+          onDone={(msg) => { onToast?.(msg); onClose(); }}
+        />
+      )}
     </div>
   );
 }
